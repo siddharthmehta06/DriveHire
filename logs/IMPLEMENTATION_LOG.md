@@ -71,3 +71,12 @@
 **Review:** Non-admin requests are denied, unknown/non-owned vehicles are masked, decision races allow only one winner, and document storage paths remain private. E-014 resolved.
 **Related errors:** E-014
 **Next:** F03 Phase 3 driver approval API.
+
+## IMP-009 | F03 | Phase 3 | 2026-10-11
+**Summary:** Completed administrator driver-review APIs, driver queue with current license metadata, required-license approval checks, reasoned rejection, race-safe profile decisions, audit entries, notifications, and `assertDriverApproved` enforcement.
+**Files added/changed:** server/src/modules/verification/service.js, server/src/modules/verification/controller.js, server/src/modules/verification/routes.js, server/src/modules/verification/schema.js, server/src/modules/verification/__tests__/verification.integration.test.js, server/src/prisma/seed.js
+**Decisions:** A driver can be approved only with an approved, unexpired, non-superseded driver-level LICENSE; driver approvals use the existing GENERAL notification type.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 38 tests, and 2 client tests passed.
+**Review:** Admin-only access, missing-license rejection, status guard enforcement, single-decision race behavior, required rejection reason, owner notification, and audit persistence verified.
+**Related errors:** none
+**Next:** F03 Phase 4 admin portal and owner verification timeline.

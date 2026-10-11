@@ -93,8 +93,14 @@ beforeAll(async () => {
 beforeEach(async () => {
   await prisma.verificationAudit.deleteMany({ where: { adminId: { in: [OWNER_ID, ADMIN_ID, 'SYSTEM'] } } });
   await prisma.notification.deleteMany({ where: { userId: OWNER_ID } });
+  await prisma.notification.deleteMany({ where: { userId: DRIVER_ID } });
   await prisma.vehicleDocument.deleteMany({ where: { ownerId: OWNER_ID } });
+  await prisma.vehicleDocument.deleteMany({ where: { ownerId: DRIVER_ID } });
   await prisma.vehicle.deleteMany({ where: { ownerId: OWNER_ID } });
+  await prisma.driverProfile.update({
+    where: { userId: DRIVER_ID },
+    data: { backgroundCheckStatus: 'PENDING' },
+  });
 });
 
 afterAll(async () => {
@@ -305,6 +311,66 @@ it('requires a substantive reason for document rejection and persists the decisi
   expect(await prisma.verificationAudit.findFirst({
     where: { targetType: 'DOCUMENT', targetId: document.id, action: 'REJECTED' },
   })).toMatchObject({ adminId: ADMIN_ID });
+});
+
+it('requires an approved current license before an admin can approve a driver', async () => {
+  const queue = await request(app)
+    .get('/api/admin/drivers?backgroundCheckStatus=PENDING')
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(queue.status).toBe(200);
+  const driver = queue.body.data.find((entry) => entry.userId === DRIVER_ID);
+  expect(driver).toBeDefined();
+  expect(driver.user.vehicleDocuments).toHaveLength(0);
+
+  const blocked = await request(app)
+    .post(`/api/admin/drivers/${DRIVER_ID}/approve`)
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(blocked.status).toBe(422);
+  expect(blocked.body.error.details.code).toBe('APPROVED_LICENSE_REQUIRED');
+
+  await prisma.vehicleDocument.create({
+    data: {
+      ownerId: DRIVER_ID,
+      type: 'LICENSE',
+      documentNumber: 'DRIVER-APPROVAL-LICENSE',
+      expiryDate: new Date(Date.now() + 86400000),
+      fileUrl: `${DRIVER_ID}/${randomUUID()}`,
+      originalName: 'license.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 8,
+      status: 'APPROVED',
+    },
+  });
+  const approved = await request(app)
+    .post(`/api/admin/drivers/${DRIVER_ID}/approve`)
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(approved.status).toBe(200);
+  expect(approved.body.data.backgroundCheckStatus).toBe('APPROVED');
+  await expect(assertDriverApproved(DRIVER_ID)).resolves.toBeDefined();
+  expect(await prisma.verificationAudit.findFirst({
+    where: { targetType: 'DRIVER', targetId: DRIVER_ID, action: 'APPROVED' },
+  })).toMatchObject({ adminId: ADMIN_ID });
+});
+
+it('rejects drivers with a required reason and returns them to no-approval state', async () => {
+  const invalid = await request(app)
+    .post(`/api/admin/drivers/${DRIVER_ID}/reject`)
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ reason: 'no' });
+  expect(invalid.status).toBe(400);
+
+  const rejected = await request(app)
+    .post(`/api/admin/drivers/${DRIVER_ID}/reject`)
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ reason: 'Identity could not be confirmed.' });
+  expect(rejected.status).toBe(200);
+  expect(rejected.body.data.backgroundCheckStatus).toBe('REJECTED');
+  await expect(assertDriverApproved(DRIVER_ID)).rejects.toMatchObject({
+    details: { code: 'DRIVER_NOT_APPROVED' },
+  });
+  expect(await prisma.verificationAudit.findFirst({
+    where: { targetType: 'DRIVER', targetId: DRIVER_ID, action: 'REJECTED' },
+  })).toMatchObject({ adminId: ADMIN_ID, reason: 'Identity could not be confirmed.' });
 });
 
 async function loginAsDriver() {
