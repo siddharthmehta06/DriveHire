@@ -53,3 +53,39 @@
 **Review:** F02 requirements and review checklist passed: owner/admin download access, cross-owner 404, private static path, path traversal rejection, MIME sniffing, supersession, SMTP failure persistence, owner-specific reminders, repeated-scan idempotence, and expiry events verified. No outstanding local implementation blockers; no lint script is configured. Feature Gate remains unchecked because the GitHub remote has no `dev` branch and no PR merge has occurred.
 **Related errors:** E-010, E-011, E-012, E-013
 **Next:** Complete the F02 PR/merge gate before starting F03.
+
+## IMP-007 | F03 | Phase 1 | 2026-10-11
+**Summary:** Added the driver profile and verification audit data layer, vehicle-status recomputation, expiry/upload event handling, and shared vehicle/driver verification guards for downstream features.
+**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261011233000_f03_verification_audit/migration.sql, server/src/modules/verification/status.js, server/src/modules/verification/guards.js, server/src/modules/verification/expiryListener.js, server/src/modules/verification/__tests__/verification.integration.test.js
+**Decisions:** `DriverProfile` is the minimal provisioned record needed for background-check decisions; automated expiry uses `SYSTEM` as the non-admin audit actor because the audit schema has no nullable actor.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 31 tests, and 2 client tests passed; `npx prisma validate` and Prisma client generation → passed.
+**Review:** Status recomputation requires current non-superseded approved documents and commercial insurance; downstream guards require verified vehicles and approved drivers with an unexpired approved license. Document upload/expiry listeners recalculate status; no outstanding phase-one findings.
+**Related errors:** none
+**Next:** F03 Phase 2 owner submission and admin vehicle/document review API.
+
+## IMP-008 | F03 | Phase 2 | 2026-10-11
+**Summary:** Added owner vehicle-submission and administrator verification queue/detail/document decision APIs, including audit records, user notifications, ownership masking, review-path privacy, rejection reasons, commercial insurance checks, and race-safe single decisions.
+**Files added/changed:** server/src/app.js, server/src/modules/documents/controller.js, server/src/modules/documents/service.js, server/src/modules/verification/controller.js, server/src/modules/verification/routes.js, server/src/modules/verification/schema.js, server/src/modules/verification/service.js, server/src/modules/verification/__tests__/verification.integration.test.js, logs/ERROR_LOG.md
+**Decisions:** Review endpoints reveal owner contact only to administrators and never return internal document storage paths; review decisions conditionally update only PENDING documents inside a transaction.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 36 tests, and 2 client tests passed, including concurrent decisions, ownership masking, commercial/private insurance rules, submission requirements, audit writes, and notifications.
+**Review:** Non-admin requests are denied, unknown/non-owned vehicles are masked, decision races allow only one winner, and document storage paths remain private. E-014 resolved.
+**Related errors:** E-014
+**Next:** F03 Phase 3 driver approval API.
+
+## IMP-009 | F03 | Phase 3 | 2026-10-11
+**Summary:** Completed administrator driver-review APIs, driver queue with current license metadata, required-license approval checks, reasoned rejection, race-safe profile decisions, audit entries, notifications, and `assertDriverApproved` enforcement.
+**Files added/changed:** server/src/modules/verification/service.js, server/src/modules/verification/controller.js, server/src/modules/verification/routes.js, server/src/modules/verification/schema.js, server/src/modules/verification/__tests__/verification.integration.test.js, server/src/prisma/seed.js
+**Decisions:** A driver can be approved only with an approved, unexpired, non-superseded driver-level LICENSE; driver approvals use the existing GENERAL notification type.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 38 tests, and 2 client tests passed.
+**Review:** Admin-only access, missing-license rejection, status guard enforcement, single-decision race behavior, required rejection reason, owner notification, and audit persistence verified.
+**Related errors:** none
+**Next:** F03 Phase 4 admin portal and owner verification timeline.
+
+## IMP-010 | F03 | Phases 4-5 | 2026-10-12
+**Summary:** Added the administrator vehicle and driver review portal, authenticated document downloads, rejection-reason dialog, review audit history, and owner verification timeline with submission action.
+**Files added/changed:** client/src/App.jsx, client/src/App.test.jsx, client/src/features/verification/, client/src/features/vehicles/VehicleDashboard.jsx, client/src/features/vehicles/api.js, client/src/styles.css, server/src/jobs/documentExpiry.js, server/src/lib/events.js, server/src/modules/documents/service.js, server/src/modules/vehicles/service.js, server/src/modules/verification/, logs/ERROR_LOG.md, client/dist/
+**Decisions:** Verification submissions are allowed only from UNVERIFIED, REJECTED, or EXPIRED states; the conditional update prevents concurrent resubmissions and preserves VERIFIED status. Admin review responses expose only owner name and contact details.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 42 tests, and 4 client tests passed; `npm run build:client`, `npx prisma validate`, fresh-database `prisma migrate reset` and `prisma migrate deploy`, and `git diff --check` passed. No lint script is configured.
+**Review:** R1-R10 and F03 section 8 reviewed. Admin routes remain role-protected; verified state requires both current approved required documents including commercial insurance; expiry recomputation and audit, minimal owner data, race-safe document decisions, and loading/empty/error UI states verified. E-017 and E-018 resolved; no outstanding BLOCKER/MAJOR findings.
+**Related errors:** E-015, E-016, E-017, E-018
+**Next:** F03 feature gate review; remote `dev` branch/PR merge requirement remains unresolved.

@@ -42,6 +42,18 @@ enum InsuranceType {
   PRIVATE
 }
 
+enum BackgroundCheckStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuditTargetType {
+  DOCUMENT
+  VEHICLE
+  DRIVER
+}
+
 enum NotificationType {
   DOC_EXPIRY_REMINDER
   DOC_APPROVED
@@ -69,8 +81,19 @@ model User {
   vehicles     Vehicle[]
   vehicleDocuments VehicleDocument[] @relation("DocumentOwner")
   notifications Notification[]
+  driverProfile DriverProfile?
 
   @@map("users")
+}
+
+model DriverProfile {
+  userId                 String               @id
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber          String?
+  backgroundCheckStatus  BackgroundCheckStatus @default(PENDING)
+  updatedAt              DateTime             @updatedAt
+
+  @@map("driver_profiles")
 }
 
 model Vehicle {
@@ -93,6 +116,19 @@ model Vehicle {
 
   @@index([ownerId])
   @@map("vehicles")
+}
+
+model VerificationAudit {
+  id         String          @id @default(uuid())
+  adminId    String
+  targetType AuditTargetType
+  targetId   String
+  action     String
+  reason     String?
+  createdAt  DateTime        @default(now())
+
+  @@index([targetType, targetId])
+  @@map("verification_audits")
 }
 
 model VehicleDocument {

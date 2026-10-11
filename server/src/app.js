@@ -5,6 +5,8 @@ const vehicleRoutes = require('./modules/vehicles/routes');
 const authRoutes = require('./modules/auth/routes');
 const notificationRoutes = require('./modules/notifications/routes');
 const documentRoutes = require('./modules/documents/routes');
+const verificationRoutes = require('./modules/verification/routes');
+require('./modules/verification/expiryListener');
 const { attachUser } = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const { successResponse } = require('./lib/response');
@@ -23,6 +25,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api', verificationRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 
 app.use((req, res) => {

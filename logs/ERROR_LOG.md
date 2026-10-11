@@ -116,3 +116,48 @@
 **Files:** client/src/features/vehicles/api.js, client/src/App.test.jsx
 **Prevention:** Exercise authenticated feature flows against the running API in addition to mocked UI tests.
 **Resolved in:** IMP-006
+
+## E-014 | F03 | Phase 2 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The document-rejection API test received 422 `MISSING_REQUIRED_DOCUMENTS` before reaching the rejection assertions.
+**Root cause:** The fixture submitted a vehicle with only an RC document and omitted the required insurance document.
+**Fix:** Added the missing current commercial-insurance fixture to the rejection test before submitting the vehicle.
+**Files:** server/src/modules/verification/__tests__/verification.integration.test.js
+**Prevention:** Build API test fixtures with all prerequisites required by the endpoint under test.
+**Resolved in:** IMP-008
+
+## E-015 | F03 | Phase 4 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** Clicking the owner verification submission button raised `ReferenceError: submitForVerification is not defined`.
+**Root cause:** The new handler was accidentally scoped inside `confirmDelete` instead of the dashboard component.
+**Fix:** Moved the handler into the dashboard component scope and re-ran the owner submission smoke test.
+**Files:** client/src/features/vehicles/VehicleDashboard.jsx
+**Prevention:** Exercise newly wired UI handlers through the feature smoke test before committing the phase.
+**Resolved in:** IMP-010
+
+## E-016 | F03 | Phase 4 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The verification UI smoke test failed with “Found multiple elements with the text: Toyota Innova”.
+**Root cause:** The selected record name appears in both the queue and review detail.
+**Fix:** Changed the smoke test to select the unique review-detail heading by role.
+**Files:** client/src/App.test.jsx
+**Prevention:** Use role- or region-scoped selectors when the same record summary is intentionally repeated.
+**Resolved in:** IMP-010
+
+## E-017 | F03 | Phase 5 | Status: RESOLVED
+**Detected by:** review
+**Symptom:** An owner could submit a vehicle that was already UNDER_REVIEW or VERIFIED, creating duplicate audit entries or downgrading a verified vehicle.
+**Root cause:** The submission service validated documents but did not enforce the allowed source states in the vehicle state machine.
+**Fix:** Restricted submissions to UNVERIFIED, REJECTED, or EXPIRED vehicles and guarded the conditional transaction update; added regression coverage for UNDER_REVIEW and VERIFIED states.
+**Files:** server/src/modules/verification/service.js, server/src/modules/verification/__tests__/verification.integration.test.js
+**Prevention:** Enforce state-machine source states in both request validation and the conditional database update.
+**Resolved in:** IMP-010
+
+## E-018 | F03 | Phase 5 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The complete test suite failed because a document-rejection test attempted to submit a vehicle already in UNDER_REVIEW.
+**Root cause:** The legacy test used the helper's UNDER_REVIEW default for a first-time submission.
+**Fix:** Initialized the test vehicle as UNVERIFIED before exercising its first submission.
+**Files:** server/src/modules/verification/__tests__/verification.integration.test.js
+**Prevention:** Initialize state-machine API test fixtures in a valid source state for the transition being tested.
+**Resolved in:** IMP-010

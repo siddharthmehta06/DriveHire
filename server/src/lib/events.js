@@ -1,8 +1,8 @@
 const listeners = new Map();
 
-function emit(eventName, payload) {
+async function emit(eventName, payload) {
   const handlers = listeners.get(eventName) || [];
-  handlers.forEach((handler) => handler(payload));
+  await Promise.all(handlers.map((handler) => handler(payload)));
   return true;
 }
 

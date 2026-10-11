@@ -18,7 +18,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const driver = await prisma.user.upsert({
     where: { email: 'driver@example.com' },
     update: { passwordHash: demoPasswordHash },
     create: {
@@ -29,6 +29,11 @@ async function main() {
       passwordHash: demoPasswordHash,
       role: 'DRIVER',
     },
+  });
+  await prisma.driverProfile.upsert({
+    where: { userId: driver.id },
+    update: {},
+    create: { userId: driver.id },
   });
 
   await prisma.user.upsert({

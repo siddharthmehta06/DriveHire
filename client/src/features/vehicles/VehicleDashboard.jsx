@@ -7,6 +7,7 @@ import {
   deleteVehicle,
   listVehicles,
   setVehicleAvailability,
+  submitVehicleForVerification,
   updateVehicle,
 } from './api';
 import { VehicleForm } from './VehicleForm';
@@ -171,6 +172,21 @@ export function VehicleDashboard() {
     }
   }
 
+  async function submitForVerification(vehicle) {
+    setSaving(true);
+    setMutationError('');
+    try {
+      const result = await submitVehicleForVerification(token, vehicle.id);
+      setModal((current) => ({ ...current, vehicle: { ...current.vehicle, ...result.data } }));
+      setVehicles((current) => current.map((item) => item.id === vehicle.id ? { ...item, ...result.data } : item));
+      setNotice('Vehicle submitted for administrator review.');
+    } catch (error) {
+      setMutationError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const modalClose = useCallback(() => {
     setModal(null);
     setMutationError('');
@@ -191,6 +207,8 @@ export function VehicleDashboard() {
             <span className="nav-index">02</span>
             <span>Documents</span>
           </a>
+          {isAdmin && <a className="sidebar-nav__link" href="/admin/verifications"><span className="nav-index">03</span><span>Vehicle review</span></a>}
+          {isAdmin && <a className="sidebar-nav__link" href="/admin/drivers"><span className="nav-index">04</span><span>Driver review</span></a>}
         </nav>
         <div className="sidebar-note">
           <span className="sidebar-note__index">DH / 01</span>
@@ -403,6 +421,31 @@ export function VehicleDashboard() {
               <p className="eyebrow">DOCUMENTS & VERIFICATION</p>
               <p>Manage registration, insurance and driver records in the <a href="/documents">document register</a>.</p>
             </div>
+            {!isAdmin && (
+              <section aria-label="Vehicle verification timeline" className="owner-verification-timeline">
+                <p className="eyebrow">VERIFICATION STATUS</p>
+                <ol>
+                  {[
+                    ['UNVERIFIED', 'Documents required'],
+                    ['UNDER_REVIEW', 'Administrator review'],
+                    ['VERIFIED', 'Verified for use'],
+                  ].map(([status, label], index) => {
+                    const currentIndex = modal.vehicle.verificationStatus === 'UNVERIFIED' ? 0
+                      : modal.vehicle.verificationStatus === 'UNDER_REVIEW' ? 1
+                        : modal.vehicle.verificationStatus === 'VERIFIED' ? 2 : 0;
+                    return <li className={index <= currentIndex ? 'is-current' : ''} key={status}><span>{String(index + 1).padStart(2, '0')}</span>{label}</li>;
+                  })}
+                </ol>
+                {['REJECTED', 'EXPIRED'].includes(modal.vehicle.verificationStatus) && (
+                  <p className="verification-status-note">{modal.vehicle.verificationStatus === 'REJECTED' ? 'A document was rejected. Update it before resubmitting.' : 'A required document has expired. Upload a current copy before resubmitting.'}</p>
+                )}
+                {modal.vehicle.verificationStatus !== 'VERIFIED' && modal.vehicle.verificationStatus !== 'UNDER_REVIEW' && (
+                  <button className="button button--primary" disabled={saving} onClick={() => submitForVerification(modal.vehicle)} type="button">
+                    {saving ? 'Submitting…' : 'Submit for verification'}
+                  </button>
+                )}
+              </section>
+            )}
             {isAdmin ? (
               <div className="dialog-actions">
                 <button className="button button--quiet" onClick={modalClose} type="button">Close</button>

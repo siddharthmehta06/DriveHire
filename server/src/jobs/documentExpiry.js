@@ -60,7 +60,7 @@ async function markExpired(document) {
     data: { status: 'EXPIRED' },
   });
   if (!updated.count) return false;
-  emit('document.expired', {
+  await emit('document.expired', {
     id: document.id,
     ownerId: document.ownerId,
     vehicleId: document.vehicleId,
