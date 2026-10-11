@@ -10,6 +10,7 @@ import {
   updateVehicle,
 } from './api';
 import { VehicleForm } from './VehicleForm';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 const STATUS_LABELS = {
   UNVERIFIED: 'Unverified',
@@ -186,10 +187,10 @@ export function VehicleDashboard() {
             <span className="nav-index">01</span>
             <span>Vehicle register</span>
           </a>
-          <span aria-disabled="true" className="sidebar-nav__link is-disabled">
+          <a className="sidebar-nav__link" href="/documents">
             <span className="nav-index">02</span>
-            <span>Documents <small>In development</small></span>
-          </span>
+            <span>Documents</span>
+          </a>
         </nav>
         <div className="sidebar-note">
           <span className="sidebar-note__index">DH / 01</span>
@@ -209,7 +210,8 @@ export function VehicleDashboard() {
       <main className="workspace-main" id="vehicles">
         <header className="workspace-topbar">
           <p>DRIVEHIRE <span>/</span> {isAdmin ? 'ADMINISTRATION' : 'MY WORKSPACE'}</p>
-          <div className="topbar-date">
+          <div className="workspace-topbar__actions">
+            <NotificationBell />
             <span className="live-indicator" aria-hidden="true" />
             <span>Workspace active</span>
           </div>
@@ -399,7 +401,7 @@ export function VehicleDashboard() {
             </dl>
             <div className="detail-placeholder">
               <p className="eyebrow">DOCUMENTS & VERIFICATION</p>
-              <p>Vehicle documents and verification history will be available here.</p>
+              <p>Manage registration, insurance and driver records in the <a href="/documents">document register</a>.</p>
             </div>
             {isAdmin ? (
               <div className="dialog-actions">

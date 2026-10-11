@@ -18,6 +18,8 @@ Compose starts the React website, API and PostgreSQL. The API waits for PostgreS
 Invoke-RestMethod http://localhost:4000/api/health
 ```
 
+MailHog captures development notification email without delivering it externally. Review messages at [http://localhost:8025](http://localhost:8025). Document files are stored under the private uploads volume; only vehicle photos are served as static files.
+
 To create the two sample vehicles:
 
 ```powershell

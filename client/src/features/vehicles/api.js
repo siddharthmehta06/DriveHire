@@ -3,7 +3,9 @@ import { apiRequest } from '../../api/http';
 export async function listVehicles(token, filters = {}) {
   const params = new URLSearchParams({ page: '1', limit: '100' });
   if (filters.verificationStatus) params.set('verificationStatus', filters.verificationStatus);
-  if (filters.isAvailable !== '') params.set('isAvailable', filters.isAvailable);
+  if (filters.isAvailable !== '' && filters.isAvailable !== undefined) {
+    params.set('isAvailable', filters.isAvailable);
+  }
   return apiRequest(`/vehicles?${params}`, { token });
 }
 

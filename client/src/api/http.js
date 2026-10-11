@@ -36,3 +36,18 @@ export async function apiRequest(path, { token, body, headers = {}, ...options }
 
   return payload;
 }
+
+export async function apiRequestBlob(path, { token, ...options } = {}) {
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new ApiError(
+      payload?.error?.message || `Request failed (${response.status}).`,
+      response.status,
+      payload?.error?.code,
+    );
+  }
+  return response.blob();
+}

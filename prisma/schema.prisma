@@ -23,6 +23,40 @@ enum VerificationStatus {
   EXPIRED
 }
 
+enum DocumentType {
+  RC
+  INSURANCE
+  LICENSE
+  PERMIT
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum InsuranceType {
+  COMMERCIAL
+  PRIVATE
+}
+
+enum NotificationType {
+  DOC_EXPIRY_REMINDER
+  DOC_APPROVED
+  DOC_REJECTED
+  VEHICLE_VERIFIED
+  VEHICLE_REJECTED
+  BOOKING_REQUESTED
+  BOOKING_ACCEPTED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  PAYMENT_RECEIPT
+  CASHOUT_PROCESSED
+  GENERAL
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -33,6 +67,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   vehicles     Vehicle[]
+  vehicleDocuments VehicleDocument[] @relation("DocumentOwner")
+  notifications Notification[]
 
   @@map("users")
 }
@@ -53,7 +89,53 @@ model Vehicle {
   deletedAt           DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  documents           VehicleDocument[]
 
   @@index([ownerId])
   @@map("vehicles")
+}
+
+model VehicleDocument {
+  id               String         @id @default(uuid())
+  ownerId          String
+  owner            User           @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  vehicleId        String?
+  vehicle          Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  type             DocumentType
+  insuranceType    InsuranceType?
+  documentNumber   String
+  issueDate        DateTime?
+  expiryDate       DateTime
+  fileUrl          String
+  originalName     String
+  mimeType         String
+  sizeBytes        Int
+  status           DocumentStatus @default(PENDING)
+  reviewedById     String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  supersededAt     DateTime?
+  lastReminderDays Int?
+  createdAt        DateTime       @default(now())
+
+  @@index([vehicleId, type])
+  @@index([status, expiryDate])
+  @@index([ownerId, vehicleId, type, supersededAt])
+  @@map("vehicle_documents")
+}
+
+model Notification {
+  id           String           @id @default(uuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         NotificationType
+  title        String
+  body         String
+  data         Json?
+  readAt       DateTime?
+  emailSentAt  DateTime?
+  createdAt    DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

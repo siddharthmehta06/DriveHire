@@ -80,3 +80,39 @@
 **Files:** prisma/migrations/20261011175000_f01_vehicle_baseline/migration.sql
 **Prevention:** Rebuild the test image after changing Prisma migration files before validating migration deployment.
 **Resolved in:** IMP-005
+
+## E-010 | F02 | Phase 2 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The authorized document download test failed because `supertest` returned the PDF payload as a Buffer and `response.text` was undefined.
+**Root cause:** The assertion treated a binary attachment as a text response.
+**Fix:** Read binary downloads from `response.body` and assert the returned Buffer instead of the text parser.
+**Files:** server/src/modules/documents/__tests__/document.integration.test.js
+**Prevention:** Assert binary download payloads through the response buffer rather than the text parser.
+**Resolved in:** IMP-006
+
+## E-011 | F02 | Phase 4 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The frontend authentication smoke test expected two requests after login but received an additional `/api/notifications` request from the new notification bell.
+**Root cause:** The test asserted the pre-notification UI's request count.
+**Fix:** Updated the authentication smoke test to account for the notification bell's additional authenticated request.
+**Files:** client/src/App.test.jsx
+**Prevention:** Update the app-level smoke test whenever a new authenticated global component adds API initialization.
+**Resolved in:** IMP-006
+
+## E-012 | F02 | Phase 4 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The document portal UI smoke test found the driver-only document option inside the all-types filter, despite checking its absence from the upload selector.
+**Root cause:** The query searched every `<select>` instead of scoping to the upload type control.
+**Fix:** Scoped the assertion to the upload document-type selector.
+**Files:** client/src/App.test.jsx
+**Prevention:** Scope accessibility queries to the specific control whose options are under test.
+**Resolved in:** IMP-006
+
+## E-013 | F02 | Phase 4 | Status: RESOLVED
+**Detected by:** runtime
+**Symptom:** The document portal's vehicle selector request returned `VALIDATION_ERROR` because its query included `isAvailable=undefined`.
+**Root cause:** The vehicle API helper filtered only the empty string, so an omitted option was stringified and sent as a query value.
+**Fix:** Omit `isAvailable` when it is either empty or undefined, and assert the exact unfiltered vehicle URL in the UI smoke test.
+**Files:** client/src/features/vehicles/api.js, client/src/App.test.jsx
+**Prevention:** Exercise authenticated feature flows against the running API in addition to mocked UI tests.
+**Resolved in:** IMP-006
