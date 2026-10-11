@@ -89,3 +89,12 @@
 **Review:** R1-R10 and F03 section 8 reviewed. Admin routes remain role-protected; verified state requires both current approved required documents including commercial insurance; expiry recomputation and audit, minimal owner data, race-safe document decisions, and loading/empty/error UI states verified. E-017 and E-018 resolved; no outstanding BLOCKER/MAJOR findings.
 **Related errors:** E-015, E-016, E-017, E-018
 **Next:** F03 feature gate review; remote `dev` branch/PR merge requirement remains unresolved.
+
+## IMP-011 | F04 | Phase 1 | 2026-10-12
+**Summary:** Added the carpool ride data model and migration with status, seat-count and cost constraints plus search, driver, and vehicle indexes. Seed now provisions an approved sample driver, verified vehicle, and three future rides.
+**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261012003000_f04_carpool_rides/migration.sql, server/src/prisma/seed.js, Docs/README.md
+**Decisions:** Database constraints enforce `totalSeats >= 1`, `availableSeats` within the total-seat range, and non-negative per-seat price; seeded rides use a driver account and vehicle that satisfy downstream posting guards.
+**Tests:** `npx prisma validate` and `npx prisma generate` passed; on an isolated PostgreSQL database, fresh `prisma migrate reset` and `migrate deploy` passed, seed completed, and direct inserts with invalid seat counts and negative prices were rejected by database CHECK constraints. No lint script is configured.
+**Review:** Migration, relations, required indexes, raw database constraints, deterministic ride seeds, and existing sample accounts reviewed; no phase-one findings.
+**Related errors:** none
+**Next:** F04 Phase 2 posting, detail, driver rides, cancellation APIs and vehicle commitment check.
