@@ -161,39 +161,3 @@
 **Files:** server/src/modules/verification/__tests__/verification.integration.test.js
 **Prevention:** Initialize state-machine API test fixtures in a valid source state for the transition being tested.
 **Resolved in:** IMP-010
-
-## E-019 | F04 | Phase 2 | Status: RESOLVED
-**Detected by:** test
-**Symptom:** The focused ride integration suite failed with `The table public.carpool_rides does not exist in the current database`.
-**Root cause:** The test runner was invoked directly without the test profile's required Prisma schema push.
-**Fix:** Ran `npx prisma db push` against the test profile before rerunning the focused ride integration suite; all six ride tests passed.
-**Files:** none
-**Prevention:** Run Prisma schema setup before focused integration suites, matching the repository's test script.
-**Resolved in:** IMP-012
-
-## E-020 | F04 | Phase 2 | Status: RESOLVED
-**Detected by:** review
-**Symptom:** Ride posting checked vehicle verification before checking ownership, exposing whether an arbitrary vehicle ID was verified.
-**Root cause:** The shared verification guard was called before resolving the vehicle in the caller's owner scope.
-**Fix:** Resolve the vehicle using the caller's ownership scope before checking verification; add a regression test proving a foreign unverified vehicle returns the same 404 as any inaccessible vehicle.
-**Files:** server/src/modules/rides/service.js, server/src/modules/rides/__tests__/rides.integration.test.js
-**Prevention:** Resolve resources through an ownership-scoped query before returning resource-specific state.
-**Resolved in:** IMP-012
-
-## E-021 | F04 | Phase 3 | Status: RESOLVED
-**Detected by:** dependency
-**Symptom:** Installing the current React Leaflet release failed with `ERESOLVE` because it requires React 19 while this client uses React 18.
-**Root cause:** The package manager selected React Leaflet 5, which is incompatible with the existing React major version.
-**Fix:** Installed React Leaflet 4.2.1, which supports the project's React 18 version, along with its compatible Leaflet peer dependency.
-**Files:** package.json, client/package.json
-**Prevention:** Select library versions compatible with the repository's pinned framework major versions.
-**Resolved in:** IMP-014
-
-## E-022 | F04 | Phase 3 | Status: RESOLVED
-**Detected by:** test
-**Symptom:** The ride search test received HTTP 400 when its `timeFrom` and `timeTo` were the same minute.
-**Root cause:** The test fixture defined an empty time interval while expecting it to be accepted by the strict search query validator.
-**Fix:** Changed the fixture to a valid non-empty time range while retaining a separate assertion that rejects reversed intervals.
-**Files:** server/src/modules/rides/__tests__/rides.integration.test.js
-**Prevention:** Construct non-empty date/time ranges in search test fixtures and retain explicit empty-range validation.
-**Resolved in:** IMP-013

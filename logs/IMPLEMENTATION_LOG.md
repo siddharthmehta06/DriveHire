@@ -89,39 +89,3 @@
 **Review:** R1-R10 and F03 section 8 reviewed. Admin routes remain role-protected; verified state requires both current approved required documents including commercial insurance; expiry recomputation and audit, minimal owner data, race-safe document decisions, and loading/empty/error UI states verified. E-017 and E-018 resolved; no outstanding BLOCKER/MAJOR findings.
 **Related errors:** E-015, E-016, E-017, E-018
 **Next:** F03 feature gate review; remote `dev` branch/PR merge requirement remains unresolved.
-
-## IMP-011 | F04 | Phase 1 | 2026-10-12
-**Summary:** Added the carpool ride data model and migration with status, seat-count and cost constraints plus search, driver, and vehicle indexes. Seed now provisions an approved sample driver, verified vehicle, and three future rides.
-**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261012003000_f04_carpool_rides/migration.sql, server/src/prisma/seed.js, Docs/README.md
-**Decisions:** Database constraints enforce `totalSeats >= 1`, `availableSeats` within the total-seat range, and non-negative per-seat price; seeded rides use a driver account and vehicle that satisfy downstream posting guards.
-**Tests:** `npx prisma validate` and `npx prisma generate` passed; on an isolated PostgreSQL database, fresh `prisma migrate reset` and `migrate deploy` passed, seed completed, and direct inserts with invalid seat counts and negative prices were rejected by database CHECK constraints. No lint script is configured.
-**Review:** Migration, relations, required indexes, raw database constraints, deterministic ride seeds, and existing sample accounts reviewed; no phase-one findings.
-**Related errors:** none
-**Next:** F04 Phase 2 posting, detail, driver rides, cancellation APIs and vehicle commitment check.
-
-## IMP-012 | F04 | Phase 2 | 2026-10-12
-**Summary:** Added authenticated APIs to post rides, retrieve privacy-safe ride detail, list a driver's paginated rides, and cancel open/full rides. Posting calls F03 approval guards, checks ownership/availability/capacity and 30-minute lead time, enforces the vehicle's three-hour ride gap under a vehicle row lock, and registers the F01 vehicle commitment check.
-**Files added/changed:** server/src/app.js, server/src/modules/rides/schema.js, server/src/modules/rides/service.js, server/src/modules/rides/controller.js, server/src/modules/rides/routes.js, server/src/modules/rides/__tests__/rides.integration.test.js, .env.example, Docs/RUNNING.md, Docs/README.md, logs/ERROR_LOG.md
-**Decisions:** Client seat availability is not accepted; it is initialized to total seats. Ride details expose only the driver's first name and vehicle description. Ownership-scoped vehicle lookup occurs before the verification guard to prevent status probing.
-**Tests:** `docker compose --profile test run --build --rm test` → 6 server suites, 49 tests, and 4 client tests passed; `npx prisma validate` and `git diff --check` passed. Focused tests cover approvals, vehicle state/ownership, seat and departure constraints, schedule conflict, API pagination, privacy, cancellation ownership/event, and commitments.
-**Review:** R1-R10 and Phase 2 DoD reviewed; admin/passenger access to driver-only endpoints is denied, arbitrary fields are rejected, race-safe vehicle locking protects schedule gaps, cancellations conditionally transition once, and inaccessible vehicle IDs are masked. E-019 and E-020 resolved.
-**Related errors:** E-019, E-020
-**Next:** F04 Phase 3 search filters, authenticated Socket.IO rooms and live seat updates.
-
-## IMP-013 | F04 | Phase 3 | 2026-10-12
-**Summary:** Added bounded ride search with origin/destination, date/time, seats, fare, destination-radius and sort filters; parameterized and wildcard-escaped PostgreSQL search; JWT-authenticated Socket.IO with per-user rooms and authorized ride-room joins; and live seat/status publishing.
-**Files added/changed:** package.json, package-lock.json, server/src/server.js, server/src/lib/realtime.js, server/src/lib/__tests__/realtime.integration.test.js, server/src/modules/rides/searchSchema.js, server/src/modules/rides/controller.js, server/src/modules/rides/routes.js, server/src/modules/rides/service.js, server/src/modules/rides/__tests__/rides.integration.test.js, logs/ERROR_LOG.md
-**Decisions:** Use Prisma tagged SQL for every dynamic search value and static fragments for sorting; escape SQL wildcard characters as well as parameterizing user terms. Sockets join the authenticated user's room automatically and can join a ride room only after server-side existence/status validation.
-**Tests:** Focused ride-search and realtime suites → 2 suites, 12 tests passed; full Docker suite → 7 server suites, 54 tests, and 2 client test files, 9 tests passed. `npx prisma validate`, `npm run build:client`, and `git diff --check` passed.
-**Review:** Search inputs are strictly validated, paginated, indexed, parameterized and wildcard escaped; only OPEN rides with sufficient seats are returned and contact details are excluded. Invalid socket tokens are rejected, arbitrary user rooms are not joinable, and unauthorized/inactive ride rooms are denied. E-022 resolved.
-**Related errors:** E-022
-**Next:** F04 Phase 4 ride pages, maps, UI smoke tests, and final feature review.
-
-## IMP-014 | F04 | Phase 4 | 2026-10-12
-**Summary:** Added responsive ride posting, searching, detail, and driver schedule pages with Leaflet route maps, vehicle/route/price validation, result paging, live seat availability, status filtering, and ride cancellation. Wired role-protected routes, driver navigation, the Socket.IO client, and map styling into the existing application.
-**Files added/changed:** client/package.json, client/package-lock.json, client/vite.config.js, client/src/App.jsx, client/src/features/rides/, client/src/features/vehicles/VehicleDashboard.jsx, client/src/main.jsx, client/src/styles.css, client/dist/, logs/IMPLEMENTATION_LOG.md, logs/ERROR_LOG.md, Docs/README.md
-**Decisions:** Keep route coordinates editable alongside map picking and avoid requiring an external geocoder; maps fit visible routes/results and use OpenStreetMap tiles. Socket connections stay stable when seat counts update, and the server remains authoritative for available seats.
-**Tests:** Frontend ride UI smoke tests cover search filters/results, posting payloads, driver cancellation, privacy-safe details, and role protection. Full Docker suite → 7 server suites, 54 tests, and 2 client test files, 9 tests passed; `npm run build:client`, `npx prisma validate`, and `git diff --check` passed.
-**Review:** Loading, empty, and error states and labelled controls are present; driver-only pages are role-protected; map view follows routes/results; event updates preserve search seat criteria; ride details omit contact details; final review and feature-specific checks found no outstanding local blockers. E-021 resolved. The remote merge gate remains unchecked because no remote `dev` branch is available.
-**Related errors:** E-021, E-022
-**Next:** F04 feature gate review; requires a remote PR merged into `dev`.

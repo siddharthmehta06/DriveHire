@@ -48,14 +48,6 @@ enum BackgroundCheckStatus {
   REJECTED
 }
 
-enum RideStatus {
-  OPEN
-  FULL
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
 enum AuditTargetType {
   DOCUMENT
   VEHICLE
@@ -90,7 +82,6 @@ model User {
   vehicleDocuments VehicleDocument[] @relation("DocumentOwner")
   notifications Notification[]
   driverProfile DriverProfile?
-  rides          CarpoolRide[]
 
   @@map("users")
 }

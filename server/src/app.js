@@ -6,7 +6,6 @@ const authRoutes = require('./modules/auth/routes');
 const notificationRoutes = require('./modules/notifications/routes');
 const documentRoutes = require('./modules/documents/routes');
 const verificationRoutes = require('./modules/verification/routes');
-const rideRoutes = require('./modules/rides/routes');
 require('./modules/verification/expiryListener');
 const { attachUser } = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
@@ -27,7 +26,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api', verificationRoutes);
-app.use('/api', rideRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 
 app.use((req, res) => {

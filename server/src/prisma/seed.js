@@ -32,8 +32,8 @@ async function main() {
   });
   await prisma.driverProfile.upsert({
     where: { userId: driver.id },
-    update: { backgroundCheckStatus: 'APPROVED', licenseNumber: 'MH1220230001234' },
-    create: { userId: driver.id, backgroundCheckStatus: 'APPROVED', licenseNumber: 'MH1220230001234' },
+    update: {},
+    create: { userId: driver.id },
   });
 
   await prisma.user.upsert({
