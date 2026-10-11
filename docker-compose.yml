@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: drivehire
+      POSTGRES_PASSWORD: drivehire
+      POSTGRES_DB: drivehire
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drivehire -d drivehire"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://drivehire:drivehire@postgres:5432/drivehire?schema=public
+      PORT: 4000
+      NODE_ENV: development
+      JWT_SECRET: local-development-only
+    ports:
+      - "4000:4000"
+    volumes:
+      - vehicle-uploads:/app/server/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    environment:
+      VITE_API_PROXY_TARGET: http://api:4000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+  postgres-test:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: drivehire
+      POSTGRES_PASSWORD: drivehire
+      POSTGRES_DB: drivehire_test
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drivehire -d drivehire_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["test"]
+    environment:
+      DATABASE_URL: postgresql://drivehire:drivehire@postgres-test:5432/drivehire_test?schema=public
+      NODE_ENV: test
+      JWT_SECRET: test-only
+    command: ["npm", "test"]
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  vehicle-uploads:
