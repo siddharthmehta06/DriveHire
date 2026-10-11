@@ -21,7 +21,7 @@ async function upload(req, res, next) {
     if (['LICENSE', 'PERMIT'].includes(payload.type) && req.user.role !== 'DRIVER') {
       throw new AppError('FORBIDDEN', 'Only driver accounts can upload driver-level documents.', 403);
     }
-    const document = await service.upload(req.user.id, payload, req.file);
+    const document = await service.upload(req.user.id, payload, req.file, req.user.role);
     return res.status(201).json(successResponse(document));
   } catch (error) {
     try {

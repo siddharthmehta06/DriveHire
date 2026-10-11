@@ -62,3 +62,12 @@
 **Review:** Status recomputation requires current non-superseded approved documents and commercial insurance; downstream guards require verified vehicles and approved drivers with an unexpired approved license. Document upload/expiry listeners recalculate status; no outstanding phase-one findings.
 **Related errors:** none
 **Next:** F03 Phase 2 owner submission and admin vehicle/document review API.
+
+## IMP-008 | F03 | Phase 2 | 2026-10-11
+**Summary:** Added owner vehicle-submission and administrator verification queue/detail/document decision APIs, including audit records, user notifications, ownership masking, review-path privacy, rejection reasons, commercial insurance checks, and race-safe single decisions.
+**Files added/changed:** server/src/app.js, server/src/modules/documents/controller.js, server/src/modules/documents/service.js, server/src/modules/verification/controller.js, server/src/modules/verification/routes.js, server/src/modules/verification/schema.js, server/src/modules/verification/service.js, server/src/modules/verification/__tests__/verification.integration.test.js, logs/ERROR_LOG.md
+**Decisions:** Review endpoints reveal owner contact only to administrators and never return internal document storage paths; review decisions conditionally update only PENDING documents inside a transaction.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 36 tests, and 2 client tests passed, including concurrent decisions, ownership masking, commercial/private insurance rules, submission requirements, audit writes, and notifications.
+**Review:** Non-admin requests are denied, unknown/non-owned vehicles are masked, decision races allow only one winner, and document storage paths remain private. E-014 resolved.
+**Related errors:** E-014
+**Next:** F03 Phase 3 driver approval API.

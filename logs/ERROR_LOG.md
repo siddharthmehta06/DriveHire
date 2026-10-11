@@ -116,3 +116,12 @@
 **Files:** client/src/features/vehicles/api.js, client/src/App.test.jsx
 **Prevention:** Exercise authenticated feature flows against the running API in addition to mocked UI tests.
 **Resolved in:** IMP-006
+
+## E-014 | F03 | Phase 2 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The document-rejection API test received 422 `MISSING_REQUIRED_DOCUMENTS` before reaching the rejection assertions.
+**Root cause:** The fixture submitted a vehicle with only an RC document and omitted the required insurance document.
+**Fix:** Added the missing current commercial-insurance fixture to the rejection test before submitting the vehicle.
+**Files:** server/src/modules/verification/__tests__/verification.integration.test.js
+**Prevention:** Build API test fixtures with all prerequisites required by the endpoint under test.
+**Resolved in:** IMP-008

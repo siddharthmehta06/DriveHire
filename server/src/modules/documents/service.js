@@ -38,7 +38,7 @@ function resolveStoredFile(fileUrl) {
   return absolutePath;
 }
 
-async function upload(ownerId, input, file) {
+async function upload(ownerId, input, file, ownerRole) {
   if (input.expiryDate <= new Date()) {
     throw new AppError('VALIDATION_ERROR', 'Expiry date must be in the future.', 400);
   }
@@ -57,6 +57,13 @@ async function upload(ownerId, input, file) {
   let document;
   try {
     document = await prisma.$transaction(async (transaction) => {
+      if (ownerRole === 'DRIVER' && input.type === 'LICENSE') {
+        await transaction.driverProfile.upsert({
+          where: { userId: ownerId },
+          update: {},
+          create: { userId: ownerId },
+        });
+      }
       await transaction.vehicleDocument.updateMany({
         where: {
           ownerId,

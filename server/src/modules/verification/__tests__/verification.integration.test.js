@@ -4,12 +4,16 @@ const prisma = require('../../../lib/prisma');
 const { recomputeVehicleStatus } = require('../status');
 const { assertDriverApproved, assertVehicleVerified } = require('../guards');
 const { handleDocumentUploaded, handleExpiredDocument } = require('../expiryListener');
+const request = require('supertest');
+const app = require('../../../app');
 
 const OWNER_ID = 'f3f3ff70-21ce-4e65-a104-a5f31c7f4174';
 const ADMIN_ID = 'f4f4ff70-21ce-4e65-a104-a5f31c7f4175';
 const DRIVER_ID = 'f5f5ff70-21ce-4e65-a104-a5f31c7f4176';
 
 let vehicleId;
+let ownerToken;
+let adminToken;
 
 async function createVehicle(status = 'UNDER_REVIEW') {
   const vehicle = await prisma.vehicle.create({
@@ -70,16 +74,32 @@ beforeAll(async () => {
     update: { backgroundCheckStatus: 'PENDING' },
     create: { userId: DRIVER_ID },
   });
+  const [ownerLogin, adminLogin] = await Promise.all([
+    request(app).post('/api/auth/login').send({
+      email: 'verification-owner@example.com',
+      password: 'VerificationPassword12!',
+      role: 'USER',
+    }),
+    request(app).post('/api/auth/login').send({
+      email: 'verification-admin@example.com',
+      password: 'VerificationPassword12!',
+      role: 'ADMIN',
+    }),
+  ]);
+  ownerToken = ownerLogin.body.data.token;
+  adminToken = adminLogin.body.data.token;
 });
 
 beforeEach(async () => {
   await prisma.verificationAudit.deleteMany({ where: { adminId: { in: [OWNER_ID, ADMIN_ID, 'SYSTEM'] } } });
+  await prisma.notification.deleteMany({ where: { userId: OWNER_ID } });
   await prisma.vehicleDocument.deleteMany({ where: { ownerId: OWNER_ID } });
   await prisma.vehicle.deleteMany({ where: { ownerId: OWNER_ID } });
 });
 
 afterAll(async () => {
   await prisma.verificationAudit.deleteMany({ where: { adminId: { in: [OWNER_ID, ADMIN_ID, 'SYSTEM'] } } });
+  await prisma.notification.deleteMany({ where: { userId: { in: [OWNER_ID, DRIVER_ID] } } });
   await prisma.vehicleDocument.deleteMany({ where: { ownerId: { in: [OWNER_ID, DRIVER_ID] } } });
   await prisma.vehicle.deleteMany({ where: { ownerId: OWNER_ID } });
   await prisma.driverProfile.deleteMany({ where: { userId: DRIVER_ID } });
@@ -172,3 +192,126 @@ it('guards downstream features against unverified vehicles and unapproved driver
   await expect(assertVehicleVerified(vehicleId)).resolves.toBeDefined();
   await expect(assertDriverApproved(DRIVER_ID)).resolves.toBeDefined();
 });
+
+it('requires current RC and insurance before owner submission and masks other owners', async () => {
+  const vehicle = await createVehicle('UNVERIFIED');
+  const missing = await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${ownerToken}`);
+  expect(missing.status).toBe(422);
+  expect(missing.body.error.details.code).toBe('MISSING_REQUIRED_DOCUMENTS');
+
+  const other = await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${await loginAsDriver()}`);
+  expect(other.status).toBe(404);
+});
+
+it('submits vehicle documents to the admin queue without exposing storage paths', async () => {
+  const vehicle = await createVehicle('UNVERIFIED');
+  await createDocument('RC');
+  await createDocument('INSURANCE', { insuranceType: 'COMMERCIAL' });
+
+  const submitted = await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${ownerToken}`);
+  expect(submitted.status).toBe(200);
+  expect(submitted.body.data.verificationStatus).toBe('UNDER_REVIEW');
+
+  const queue = await request(app)
+    .get('/api/admin/verifications?page=1&limit=10')
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(queue.status).toBe(200);
+  expect(queue.body.data.some((item) => item.id === vehicle.id)).toBe(true);
+  expect(queue.body.data.find((item) => item.id === vehicle.id).documents.every((item) => !('fileUrl' in item))).toBe(true);
+
+  const detail = await request(app)
+    .get(`/api/admin/verifications/${vehicle.id}`)
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(detail.status).toBe(200);
+  expect(detail.body.data.audit.some((item) => item.action === 'SUBMITTED')).toBe(true);
+});
+
+it('restricts verification endpoints to administrators', async () => {
+  const response = await request(app)
+    .get('/api/admin/verifications')
+    .set('Authorization', `Bearer ${ownerToken}`);
+  expect(response.status).toBe(403);
+});
+
+it('only approves commercial, unexpired documents and verifies when both required files are approved', async () => {
+  const vehicle = await createVehicle('UNVERIFIED');
+  const rc = await createDocument('RC');
+  const privateInsurance = await createDocument('INSURANCE', { insuranceType: 'PRIVATE' });
+  await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .expect(200);
+
+  const [first, duplicate] = await Promise.all([
+    request(app)
+      .post(`/api/admin/documents/${rc.id}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`),
+    request(app)
+      .post(`/api/admin/documents/${rc.id}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`),
+  ]);
+  expect([first.status, duplicate.status].sort()).toEqual([200, 409]);
+
+  const privateDecision = await request(app)
+    .post(`/api/admin/documents/${privateInsurance.id}/approve`)
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(privateDecision.status).toBe(422);
+  expect(privateDecision.body.error.details.code).toBe('INSURANCE_NOT_COMMERCIAL');
+  await prisma.vehicleDocument.update({
+    where: { id: privateInsurance.id },
+    data: { supersededAt: new Date() },
+  });
+  const insurance = await createDocument('INSURANCE', { insuranceType: 'COMMERCIAL' });
+
+  const approvedInsurance = await request(app)
+    .post(`/api/admin/documents/${insurance.id}/approve`)
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(approvedInsurance.status).toBe(200);
+  expect(approvedInsurance.body.data.vehicleStatus).toBe('VERIFIED');
+  expect((await prisma.vehicle.findUnique({ where: { id: vehicle.id } })).verificationStatus).toBe('VERIFIED');
+  expect(await prisma.verificationAudit.count({
+    where: { targetType: 'DOCUMENT', targetId: { in: [rc.id, insurance.id] }, action: 'APPROVED' },
+  })).toBe(2);
+});
+
+it('requires a substantive reason for document rejection and persists the decision', async () => {
+  const vehicle = await createVehicle();
+  const document = await createDocument('RC');
+  await createDocument('INSURANCE', { insuranceType: 'COMMERCIAL' });
+  await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .expect(200);
+
+  const invalid = await request(app)
+    .post(`/api/admin/documents/${document.id}/reject`)
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ reason: 'no' });
+  expect(invalid.status).toBe(400);
+
+  const rejected = await request(app)
+    .post(`/api/admin/documents/${document.id}/reject`)
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ reason: 'Registration details are unreadable.' });
+  expect(rejected.status).toBe(200);
+  expect(rejected.body.data.rejectionReason).toBe('Registration details are unreadable.');
+  expect((await prisma.vehicle.findUnique({ where: { id: vehicle.id } })).verificationStatus).toBe('REJECTED');
+  expect(await prisma.verificationAudit.findFirst({
+    where: { targetType: 'DOCUMENT', targetId: document.id, action: 'REJECTED' },
+  })).toMatchObject({ adminId: ADMIN_ID });
+});
+
+async function loginAsDriver() {
+  const login = await request(app).post('/api/auth/login').send({
+    email: 'verification-driver@example.com',
+    password: 'VerificationPassword12!',
+    role: 'DRIVER',
+  });
+  return login.body.data.token;
+}
