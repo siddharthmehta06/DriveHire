@@ -179,3 +179,21 @@
 **Files:** server/src/modules/rides/service.js, server/src/modules/rides/__tests__/rides.integration.test.js
 **Prevention:** Resolve resources through an ownership-scoped query before returning resource-specific state.
 **Resolved in:** IMP-012
+
+## E-021 | F04 | Phase 3 | Status: OPEN
+**Detected by:** dependency
+**Symptom:** Installing the current React Leaflet release failed with `ERESOLVE` because it requires React 19 while this client uses React 18.
+**Root cause:** The package manager selected React Leaflet 5, which is incompatible with the existing React major version.
+**Fix:**
+**Files:** package.json, client/package.json
+**Prevention:** Select library versions compatible with the repository's pinned framework major versions.
+**Resolved in:**
+
+## E-022 | F04 | Phase 3 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The ride search test received HTTP 400 when its `timeFrom` and `timeTo` were the same minute.
+**Root cause:** The test fixture defined an empty time interval while expecting it to be accepted by the strict search query validator.
+**Fix:** Changed the fixture to a valid non-empty time range while retaining a separate assertion that rejects reversed intervals.
+**Files:** server/src/modules/rides/__tests__/rides.integration.test.js
+**Prevention:** Construct non-empty date/time ranges in search test fixtures and retain explicit empty-range validation.
+**Resolved in:** IMP-013

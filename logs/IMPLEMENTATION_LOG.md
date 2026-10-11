@@ -107,3 +107,12 @@
 **Review:** R1-R10 and Phase 2 DoD reviewed; admin/passenger access to driver-only endpoints is denied, arbitrary fields are rejected, race-safe vehicle locking protects schedule gaps, cancellations conditionally transition once, and inaccessible vehicle IDs are masked. E-019 and E-020 resolved.
 **Related errors:** E-019, E-020
 **Next:** F04 Phase 3 search filters, authenticated Socket.IO rooms and live seat updates.
+
+## IMP-013 | F04 | Phase 3 | 2026-10-12
+**Summary:** Added bounded ride search with origin/destination, date/time, seats, fare, destination-radius and sort filters; parameterized and wildcard-escaped PostgreSQL search; JWT-authenticated Socket.IO with per-user rooms and authorized ride-room joins; and live seat/status publishing.
+**Files added/changed:** package.json, package-lock.json, server/src/server.js, server/src/lib/realtime.js, server/src/lib/__tests__/realtime.integration.test.js, server/src/modules/rides/searchSchema.js, server/src/modules/rides/controller.js, server/src/modules/rides/routes.js, server/src/modules/rides/service.js, server/src/modules/rides/__tests__/rides.integration.test.js, logs/ERROR_LOG.md
+**Decisions:** Use Prisma tagged SQL for every dynamic search value and static fragments for sorting; escape SQL wildcard characters as well as parameterizing user terms. Sockets join the authenticated user's room automatically and can join a ride room only after server-side existence/status validation.
+**Tests:** Focused ride-search and realtime suites → 2 suites, 12 tests passed; full Docker suite → 7 server suites, 54 tests, and 2 client test files, 9 tests passed. `npx prisma validate`, `npm run build:client`, and `git diff --check` passed.
+**Review:** Search inputs are strictly validated, paginated, indexed, parameterized and wildcard escaped; only OPEN rides with sufficient seats are returned and contact details are excluded. Invalid socket tokens are rejected, arbitrary user rooms are not joinable, and unauthorized/inactive ride rooms are denied. E-022 resolved.
+**Related errors:** E-022
+**Next:** F04 Phase 4 ride pages, maps, UI smoke tests, and final feature review.

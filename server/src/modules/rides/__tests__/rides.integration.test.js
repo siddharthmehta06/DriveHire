@@ -285,3 +285,97 @@ it('registers active future rides as vehicle commitments', async () => {
   await prisma.carpoolRide.update({ where: { id: ride.id }, data: { status: 'CANCELLED' } });
   expect(await hasVehicleCommitments(vehicleId)).toBe(false);
 });
+
+it('searches open future rides by text, date/time, seats, price, radius, sort, and pagination', async () => {
+  const baseDeparture = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  const cheaper = await createRide({
+    originText: 'Pune Central',
+    destText: 'Mumbai South',
+    departureTime: baseDeparture,
+    availableSeats: 2,
+    costPerSeat: '400.00',
+    destLat: 19.08,
+    destLng: 72.88,
+  });
+  const later = await createRide({
+    originText: 'Pune East',
+    destText: 'Mumbai North',
+    departureTime: new Date(baseDeparture.getTime() + 60 * 60 * 1000),
+    availableSeats: 4,
+    costPerSeat: '900.00',
+    destLat: 19.14,
+    destLng: 72.94,
+  });
+  await createRide({
+    originText: 'Pune Central',
+    destText: 'Mumbai South',
+    departureTime: new Date(baseDeparture.getTime() + 2 * 60 * 60 * 1000),
+    availableSeats: 4,
+    costPerSeat: '100.00',
+    status: 'CANCELLED',
+  });
+
+  const date = baseDeparture.toISOString().slice(0, 10);
+  const time = baseDeparture.toISOString().slice(11, 16);
+  const text = await request(app)
+    .get('/api/rides')
+    .query({ origin: 'Pune Central', destination: 'Mumbai South', date, timeFrom: time, seats: 2, maxPrice: 500 })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(text.status).toBe(200);
+  expect(text.body.data.map((ride) => ride.id)).toEqual([cheaper.id]);
+  expect(text.body.meta.total).toBe(1);
+
+  const price = await request(app)
+    .get('/api/rides')
+    .query({ destination: 'Mumbai', date, timeFrom: time, sort: 'price', limit: 1 })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(price.status).toBe(200);
+  expect(price.body.data[0].id).toBe(cheaper.id);
+
+  const radius = await request(app)
+    .get('/api/rides')
+    .query({ lat: 19.08, lng: 72.88, radiusKm: 2, date })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(radius.status).toBe(200);
+  expect(radius.body.data.map((ride) => ride.id)).toContain(cheaper.id);
+  expect(radius.body.data.map((ride) => ride.id)).not.toContain(later.id);
+});
+
+it('escapes search wildcards, enforces future/open/seat filters, and validates query combinations', async () => {
+  const literalWildcard = await createRide({
+    originText: 'Pune% Junction',
+    departureTime: new Date(Date.now() + 5 * 60 * 60 * 1000),
+    availableSeats: 1,
+  });
+  await createRide({
+    originText: 'Pune Central',
+    departureTime: new Date(Date.now() + 7 * 60 * 60 * 1000),
+    availableSeats: 1,
+  });
+
+  const literal = await request(app)
+    .get('/api/rides')
+    .query({ origin: 'Pune%', seats: 2 })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(literal.status).toBe(200);
+  expect(literal.body.data).toHaveLength(0);
+
+  const wildcard = await request(app)
+    .get('/api/rides')
+    .query({ origin: 'Pune%', seats: 1 })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(wildcard.status).toBe(200);
+  expect(wildcard.body.data.map((ride) => ride.id)).toEqual([literalWildcard.id]);
+
+  const invalidCoordinates = await request(app)
+    .get('/api/rides')
+    .query({ lat: 19.08 })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(invalidCoordinates.status).toBe(400);
+
+  const invalidTimes = await request(app)
+    .get('/api/rides')
+    .query({ timeFrom: '18:00', timeTo: '17:00' })
+    .set('Authorization', `Bearer ${userToken}`);
+  expect(invalidTimes.status).toBe(400);
+});

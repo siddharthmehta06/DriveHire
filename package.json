@@ -24,6 +24,8 @@
     "nodemailer": "^10.1.0",
     "pino": "^9.3.2",
     "prisma": "^5.22.0",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {

@@ -1,11 +1,15 @@
+const { createServer } = require('http');
 const app = require('./app');
 const logger = require('./lib/logger');
+const { initializeRealtime } = require('./lib/realtime');
 const cron = require('node-cron');
 const { runExpiryScan } = require('./jobs/documentExpiry');
 
 const port = Number(process.env.PORT || 4000);
+const server = createServer(app);
+initializeRealtime(server);
 
-app.listen(port, () => {
+server.listen(port, () => {
   logger.info(`DriveHire server listening on http://localhost:${port}`);
 });
 

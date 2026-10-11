@@ -1,4 +1,5 @@
 const prisma = require('../../lib/prisma');
+const { Prisma } = require('@prisma/client');
 const { emit } = require('../../lib/events');
 const { AppError } = require('../../lib/errors');
 const { assertDriverApproved, assertVehicleVerified } = require('../verification/guards');
@@ -32,7 +33,7 @@ async function createRide(driverId, input) {
   }
 
   try {
-    return await prisma.$transaction(async (transaction) => {
+    const ride = await prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT "id" FROM "vehicles" WHERE "id" = ${input.vehicleId} FOR UPDATE`;
       const currentVehicle = await transaction.vehicle.findFirst({
         where: {
@@ -87,6 +88,8 @@ async function createRide(driverId, input) {
         },
       });
     });
+    await publishRideSeats(ride);
+    return ride;
   } catch (error) {
     if (error.code === 'P2034') {
       throw new AppError('CONFLICT', 'Another ride was scheduled for this vehicle at the same time.', 409, {
@@ -131,6 +134,85 @@ async function listMyRides(driverId, query) {
   return { items, total };
 }
 
+function escapeLike(value) {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+function buildDepartureRange(query) {
+  const now = new Date();
+  const date = query.date || now.toISOString().slice(0, 10);
+  const start = new Date(`${date}T${query.timeFrom || '00:00'}:00.000Z`);
+  const end = new Date(`${date}T${query.timeTo || '23:59'}:59.999Z`);
+  return { start, end };
+}
+
+async function searchRides(query) {
+  const conditions = [
+    Prisma.sql`r."status" = 'OPEN'`,
+    Prisma.sql`r."availableSeats" >= ${query.seats}`,
+    Prisma.sql`r."departureTime" > ${new Date()}`,
+  ];
+
+  if (query.origin) {
+    conditions.push(Prisma.sql`r."originText" ILIKE ${`%${escapeLike(query.origin)}%`} ESCAPE E'\\\\'`);
+  }
+  if (query.destination) {
+    conditions.push(Prisma.sql`r."destText" ILIKE ${`%${escapeLike(query.destination)}%`} ESCAPE E'\\\\'`);
+  }
+  if (query.date || query.timeFrom || query.timeTo) {
+    const { start, end } = buildDepartureRange(query);
+    conditions.push(Prisma.sql`r."departureTime" >= ${start} AND r."departureTime" <= ${end}`);
+  }
+  if (query.maxPrice !== undefined) {
+    conditions.push(Prisma.sql`r."costPerSeat" <= ${query.maxPrice}`);
+  }
+  if (query.lat !== undefined && query.lng !== undefined) {
+    const radians = Math.PI / 180;
+    const distance = Prisma.sql`6371 * 2 * ASIN(SQRT(
+      POWER(SIN((${query.lat} - r."destLat") * ${radians} / 2), 2)
+      + COS(r."destLat" * ${radians}) * COS(${query.lat} * ${radians})
+      * POWER(SIN((${query.lng} - r."destLng") * ${radians} / 2), 2)
+    ))`;
+    conditions.push(Prisma.sql`${distance} <= ${query.radiusKm}`);
+  }
+
+  const where = Prisma.join(conditions, ' AND ');
+  const orderBy = query.sort === 'price'
+    ? Prisma.sql`r."costPerSeat" ASC, r."departureTime" ASC`
+    : Prisma.sql`r."departureTime" ASC, r."id" ASC`;
+  const offset = (query.page - 1) * query.limit;
+  const [items, countRows] = await Promise.all([
+    prisma.$queryRaw`
+      SELECT r."id", r."driverId", r."vehicleId", r."originText", r."originLat", r."originLng",
+        r."destText", r."destLat", r."destLng", r."distanceKm", r."departureTime",
+        r."totalSeats", r."availableSeats", r."costPerSeat", r."notes", r."status", r."createdAt",
+        u."name" AS "driverName", v."make" AS "vehicleMake", v."model" AS "vehicleModel",
+        v."vehicleType" AS "vehicleType"
+      FROM "carpool_rides" r
+      JOIN "users" u ON u."id" = r."driverId"
+      JOIN "vehicles" v ON v."id" = r."vehicleId"
+      WHERE ${where}
+      ORDER BY ${orderBy}
+      LIMIT ${query.limit} OFFSET ${offset}
+    `,
+    prisma.$queryRaw`
+      SELECT COUNT(*)::INTEGER AS "total"
+      FROM "carpool_rides" r
+      WHERE ${where}
+    `,
+  ]);
+
+  return {
+    items: items.map(({ driverName, vehicleMake, vehicleModel, vehicleType, ...ride }) => ({
+      ...ride,
+      driver: { firstName: driverName.trim().split(/\s+/)[0] },
+      vehicle: { make: vehicleMake, model: vehicleModel, vehicleType },
+      rating: null,
+    })),
+    total: countRows[0].total,
+  };
+}
+
 async function cancelRide(driverId, rideId) {
   const result = await prisma.carpoolRide.updateMany({
     where: { id: rideId, driverId, status: { in: ['OPEN', 'FULL'] } },
@@ -145,8 +227,18 @@ async function cancelRide(driverId, rideId) {
     throw new AppError('CONFLICT', 'Only open or full rides can be cancelled.', 409);
   }
   const ride = await prisma.carpoolRide.findUnique({ where: { id: rideId } });
+  await publishRideSeats(ride);
   await emit('ride.cancelled', { rideId, driverId, ride });
   return ride;
+}
+
+async function publishRideSeats(ride) {
+  const realtime = require('../../lib/realtime');
+  realtime.emitToRide(ride.id, 'ride:seats-updated', {
+    rideId: ride.id,
+    availableSeats: ride.availableSeats,
+    status: ride.status,
+  });
 }
 
 function hasVehicleCommitments(vehicleId) {
@@ -162,4 +254,12 @@ function hasVehicleCommitments(vehicleId) {
 
 vehicleService.registerCommitmentCheck(hasVehicleCommitments);
 
-module.exports = { createRide, getRide, listMyRides, cancelRide, hasVehicleCommitments };
+module.exports = {
+  createRide,
+  getRide,
+  listMyRides,
+  searchRides,
+  cancelRide,
+  hasVehicleCommitments,
+  publishRideSeats,
+};
