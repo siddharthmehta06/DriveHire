@@ -53,3 +53,12 @@
 **Review:** F02 requirements and review checklist passed: owner/admin download access, cross-owner 404, private static path, path traversal rejection, MIME sniffing, supersession, SMTP failure persistence, owner-specific reminders, repeated-scan idempotence, and expiry events verified. No outstanding local implementation blockers; no lint script is configured. Feature Gate remains unchecked because the GitHub remote has no `dev` branch and no PR merge has occurred.
 **Related errors:** E-010, E-011, E-012, E-013
 **Next:** Complete the F02 PR/merge gate before starting F03.
+
+## IMP-007 | F03 | Phase 1 | 2026-10-11
+**Summary:** Added the driver profile and verification audit data layer, vehicle-status recomputation, expiry/upload event handling, and shared vehicle/driver verification guards for downstream features.
+**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261011233000_f03_verification_audit/migration.sql, server/src/modules/verification/status.js, server/src/modules/verification/guards.js, server/src/modules/verification/expiryListener.js, server/src/modules/verification/__tests__/verification.integration.test.js
+**Decisions:** `DriverProfile` is the minimal provisioned record needed for background-check decisions; automated expiry uses `SYSTEM` as the non-admin audit actor because the audit schema has no nullable actor.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 31 tests, and 2 client tests passed; `npx prisma validate` and Prisma client generation → passed.
+**Review:** Status recomputation requires current non-superseded approved documents and commercial insurance; downstream guards require verified vehicles and approved drivers with an unexpired approved license. Document upload/expiry listeners recalculate status; no outstanding phase-one findings.
+**Related errors:** none
+**Next:** F03 Phase 2 owner submission and admin vehicle/document review API.
