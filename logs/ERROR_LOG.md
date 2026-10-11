@@ -180,14 +180,14 @@
 **Prevention:** Resolve resources through an ownership-scoped query before returning resource-specific state.
 **Resolved in:** IMP-012
 
-## E-021 | F04 | Phase 3 | Status: OPEN
+## E-021 | F04 | Phase 3 | Status: RESOLVED
 **Detected by:** dependency
 **Symptom:** Installing the current React Leaflet release failed with `ERESOLVE` because it requires React 19 while this client uses React 18.
 **Root cause:** The package manager selected React Leaflet 5, which is incompatible with the existing React major version.
-**Fix:**
+**Fix:** Installed React Leaflet 4.2.1, which supports the project's React 18 version, along with its compatible Leaflet peer dependency.
 **Files:** package.json, client/package.json
 **Prevention:** Select library versions compatible with the repository's pinned framework major versions.
-**Resolved in:**
+**Resolved in:** IMP-014
 
 ## E-022 | F04 | Phase 3 | Status: RESOLVED
 **Detected by:** test

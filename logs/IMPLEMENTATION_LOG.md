@@ -116,3 +116,12 @@
 **Review:** Search inputs are strictly validated, paginated, indexed, parameterized and wildcard escaped; only OPEN rides with sufficient seats are returned and contact details are excluded. Invalid socket tokens are rejected, arbitrary user rooms are not joinable, and unauthorized/inactive ride rooms are denied. E-022 resolved.
 **Related errors:** E-022
 **Next:** F04 Phase 4 ride pages, maps, UI smoke tests, and final feature review.
+
+## IMP-014 | F04 | Phase 4 | 2026-10-12
+**Summary:** Added responsive ride posting, searching, detail, and driver schedule pages with Leaflet route maps, vehicle/route/price validation, result paging, live seat availability, status filtering, and ride cancellation. Wired role-protected routes, driver navigation, the Socket.IO client, and map styling into the existing application.
+**Files added/changed:** client/package.json, client/package-lock.json, client/vite.config.js, client/src/App.jsx, client/src/features/rides/, client/src/features/vehicles/VehicleDashboard.jsx, client/src/main.jsx, client/src/styles.css, client/dist/, logs/IMPLEMENTATION_LOG.md, logs/ERROR_LOG.md, Docs/README.md
+**Decisions:** Keep route coordinates editable alongside map picking and avoid requiring an external geocoder; maps fit visible routes/results and use OpenStreetMap tiles. Socket connections stay stable when seat counts update, and the server remains authoritative for available seats.
+**Tests:** Frontend ride UI smoke tests cover search filters/results, posting payloads, driver cancellation, privacy-safe details, and role protection. Full Docker suite → 7 server suites, 54 tests, and 2 client test files, 9 tests passed; `npm run build:client`, `npx prisma validate`, and `git diff --check` passed.
+**Review:** Loading, empty, and error states and labelled controls are present; driver-only pages are role-protected; map view follows routes/results; event updates preserve search seat criteria; ride details omit contact details; final review and feature-specific checks found no outstanding local blockers. E-021 resolved. The remote merge gate remains unchecked because no remote `dev` branch is available.
+**Related errors:** E-021, E-022
+**Next:** F04 feature gate review; requires a remote PR merged into `dev`.

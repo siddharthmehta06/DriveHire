@@ -207,6 +207,12 @@ export function VehicleDashboard() {
             <span className="nav-index">02</span>
             <span>Documents</span>
           </a>
+          <a className="sidebar-nav__link" href="/rides/search">
+            <span className="nav-index">05</span>
+            <span>Search rides</span>
+          </a>
+          {user.role === 'DRIVER' && <a className="sidebar-nav__link" href="/rides/post"><span className="nav-index">06</span><span>Post a ride</span></a>}
+          {user.role === 'DRIVER' && <a className="sidebar-nav__link" href="/rides/mine"><span className="nav-index">07</span><span>My rides</span></a>}
           {isAdmin && <a className="sidebar-nav__link" href="/admin/verifications"><span className="nav-index">03</span><span>Vehicle review</span></a>}
           {isAdmin && <a className="sidebar-nav__link" href="/admin/drivers"><span className="nav-index">04</span><span>Driver review</span></a>}
         </nav>
