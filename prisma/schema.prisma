@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VehicleType {
+  HATCHBACK
+  SEDAN
+  SUV
+  MPV
+  LUXURY
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         String   @default("USER")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  vehicles     Vehicle[]
+
+  @@map("users")
+}
+
+model Vehicle {
+  id                  String    @id @default(uuid())
+  ownerId             String
+  owner               User      @relation(fields: [ownerId], references: [id])
+  make                String
+  model               String
+  year                Int
+  registrationNumber String    @unique
+  vehicleType         VehicleType
+  seatCapacity        Int
+  photoUrls           String[]
+  verificationStatus  VerificationStatus @default(UNVERIFIED)
+  isAvailable         Boolean   @default(true)
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@map("vehicles")
+}

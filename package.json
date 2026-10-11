@@ -1,0 +1,31 @@
+{
+  "name": "drivehire",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server/src/server.js",
+    "start": "node server/src/server.js",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "prisma db push && jest --runInBand server/src",
+    "test:client": "npm --prefix client test",
+    "build:client": "npm --prefix client run build",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "db:seed": "node server/src/prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^1.4.5-lts.2",
+    "pino": "^9.3.2",
+    "prisma": "^5.22.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  }
+}
