@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { AuthProvider } from './context/AuthContext';
@@ -32,14 +32,51 @@ describe('DriveHire access screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Vehicle overview' })).toBeInTheDocument());
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/login');
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       email: 'admin@example.com',
       password: 'DriveHire2026!',
       role: 'ADMIN',
     });
-    expect(fetchMock.mock.calls[1][0]).toContain('/api/vehicles');
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(expect.arrayContaining([
+      expect.stringContaining('/api/vehicles'),
+      expect.stringContaining('/api/notifications'),
+    ]));
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
+    expect(await screen.findByText('Your account has no notifications yet.')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders the protected document register and its role-specific upload fields', async () => {
+    const fetchMock = vi.fn().mockImplementation((url) => ({
+      ok: true,
+      status: 200,
+      json: async () => url.includes('/api/vehicles')
+        ? { success: true, data: [{ id: 'vehicle-1', make: 'Toyota', model: 'Innova', registrationNumber: 'MH12AB1234' }] }
+        : { success: true, data: [], meta: { total: 0, page: 1, limit: 100, unreadCount: 0 } },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    window.localStorage.setItem('drivehire-session', JSON.stringify({
+      token: 'document-session',
+      user: { id: 'owner-id', name: 'Vehicle Owner', email: 'owner@example.com', role: 'USER' },
+    }));
+    window.history.pushState({}, '', '/documents');
+
+    render(<AuthProvider><App /></AuthProvider>);
+
+    expect(await screen.findByRole('heading', { name: 'Documents' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Document type')).toBeInTheDocument();
+    expect(screen.getByLabelText('Vehicle')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('Document type')).queryByRole('option', { name: 'Driving licence' })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(expect.arrayContaining([
+      expect.stringContaining('/api/documents'),
+      '/api/vehicles?page=1&limit=100',
+      expect.stringContaining('/api/notifications'),
+    ]));
+
+    window.history.pushState({}, '', '/');
+    window.localStorage.clear();
     vi.unstubAllGlobals();
   });
 });

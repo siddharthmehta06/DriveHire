@@ -3,6 +3,8 @@ const express = require('express');
 const path = require('path');
 const vehicleRoutes = require('./modules/vehicles/routes');
 const authRoutes = require('./modules/auth/routes');
+const notificationRoutes = require('./modules/notifications/routes');
+const documentRoutes = require('./modules/documents/routes');
 const { attachUser } = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const { successResponse } = require('./lib/response');
@@ -11,7 +13,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads/vehicles', express.static(path.join(__dirname, '../uploads/vehicles')));
 app.use(attachUser);
 
 app.get('/api/health', (req, res) => {
@@ -19,6 +21,8 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/documents', documentRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 
 app.use((req, res) => {

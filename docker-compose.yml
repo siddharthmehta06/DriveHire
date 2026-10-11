@@ -24,6 +24,10 @@ services:
       PORT: 4000
       NODE_ENV: development
       JWT_SECRET: local-development-only
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      SMTP_FROM: DriveHire <notifications@drivehire.local>
     ports:
       - "4000:4000"
     volumes:
@@ -31,6 +35,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
 
   client:
     build:
