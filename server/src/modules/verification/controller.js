@@ -35,8 +35,7 @@ async function getVehicleReview(req, res, next) {
   try {
     const { vehicleId } = parseBody(vehicleReviewIdSchema, req.params);
     const vehicle = await service.getVehicleReview(vehicleId);
-    const audit = await service.getAudit('VEHICLE', vehicleId);
-    return res.json(successResponse({ ...vehicle, audit }));
+    return res.json(successResponse(vehicle));
   } catch (error) {
     return next(error);
   }

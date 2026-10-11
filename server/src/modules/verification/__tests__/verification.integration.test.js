@@ -235,7 +235,43 @@ it('submits vehicle documents to the admin queue without exposing storage paths'
     .get(`/api/admin/verifications/${vehicle.id}`)
     .set('Authorization', `Bearer ${adminToken}`);
   expect(detail.status).toBe(200);
+  expect(detail.body.data.owner).toEqual({
+    name: 'Verification Owner',
+    email: 'verification-owner@example.com',
+    phone: null,
+  });
   expect(detail.body.data.audit.some((item) => item.action === 'SUBMITTED')).toBe(true);
+});
+
+it.each(['REJECTED', 'EXPIRED'])('allows a %s vehicle to return to review after replacement documents are supplied', async (status) => {
+  const vehicle = await createVehicle(status);
+  await createDocument('RC');
+  await createDocument('INSURANCE', { insuranceType: 'COMMERCIAL' });
+
+  const response = await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${ownerToken}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.verificationStatus).toBe('UNDER_REVIEW');
+});
+
+it.each(['UNDER_REVIEW', 'VERIFIED'])('does not allow a %s vehicle to be submitted again', async (status) => {
+  const vehicle = await createVehicle(status);
+  const documentStatus = status === 'VERIFIED' ? 'APPROVED' : 'PENDING';
+  await createDocument('RC', { status: documentStatus });
+  await createDocument('INSURANCE', { status: documentStatus, insuranceType: 'COMMERCIAL' });
+
+  const response = await request(app)
+    .post(`/api/vehicles/${vehicle.id}/submit-verification`)
+    .set('Authorization', `Bearer ${ownerToken}`);
+
+  expect(response.status).toBe(409);
+  expect(response.body.error.details.code).toBe('INVALID_VERIFICATION_STATE');
+  expect((await prisma.vehicle.findUnique({ where: { id: vehicle.id } })).verificationStatus).toBe(status);
+  expect(await prisma.verificationAudit.count({
+    where: { targetType: 'VEHICLE', targetId: vehicle.id, action: 'SUBMITTED' },
+  })).toBe(0);
 });
 
 it('restricts verification endpoints to administrators', async () => {
@@ -263,6 +299,10 @@ it('only approves commercial, unexpired documents and verifies when both require
       .set('Authorization', `Bearer ${adminToken}`),
   ]);
   expect([first.status, duplicate.status].sort()).toEqual([200, 409]);
+  const review = await request(app)
+    .get(`/api/admin/verifications/${vehicle.id}`)
+    .set('Authorization', `Bearer ${adminToken}`);
+  expect(review.body.data.audit.some((entry) => entry.targetId === rc.id && entry.action === 'APPROVED')).toBe(true);
 
   const privateDecision = await request(app)
     .post(`/api/admin/documents/${privateInsurance.id}/approve`)
@@ -287,7 +327,7 @@ it('only approves commercial, unexpired documents and verifies when both require
 });
 
 it('requires a substantive reason for document rejection and persists the decision', async () => {
-  const vehicle = await createVehicle();
+  const vehicle = await createVehicle('UNVERIFIED');
   const document = await createDocument('RC');
   await createDocument('INSURANCE', { insuranceType: 'COMMERCIAL' });
   await request(app)

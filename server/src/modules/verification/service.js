@@ -5,6 +5,7 @@ const { notify } = require('../../lib/notifications');
 const { recomputeVehicleStatus } = require('./status');
 
 const REQUIRED_DOCUMENTS = ['RC', 'INSURANCE'];
+const SUBMITTABLE_STATUSES = ['UNVERIFIED', 'REJECTED', 'EXPIRED'];
 
 function reviewDocument(document) {
   const { fileUrl, ...metadata } = document;
@@ -17,6 +18,11 @@ async function submitVehicle(userId, vehicleId) {
     select: { id: true, verificationStatus: true },
   });
   if (!vehicle) throw new AppError('NOT_FOUND', 'Vehicle not found.', 404);
+  if (!SUBMITTABLE_STATUSES.includes(vehicle.verificationStatus)) {
+    throw new AppError('CONFLICT', 'This vehicle cannot be submitted in its current verification state.', 409, {
+      code: 'INVALID_VERIFICATION_STATE',
+    });
+  }
 
   const documents = await prisma.vehicleDocument.findMany({
     where: {
@@ -38,10 +44,24 @@ async function submitVehicle(userId, vehicleId) {
 
   const updated = await prisma.$transaction(async (transaction) => {
     const claimed = await transaction.vehicle.updateMany({
-      where: { id: vehicleId, ownerId: userId, deletedAt: null },
+      where: {
+        id: vehicleId,
+        ownerId: userId,
+        deletedAt: null,
+        verificationStatus: { in: SUBMITTABLE_STATUSES },
+      },
       data: { verificationStatus: 'UNDER_REVIEW' },
     });
-    if (!claimed.count) throw new AppError('NOT_FOUND', 'Vehicle not found.', 404);
+    if (!claimed.count) {
+      const currentVehicle = await transaction.vehicle.findFirst({
+        where: { id: vehicleId, ownerId: userId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!currentVehicle) throw new AppError('NOT_FOUND', 'Vehicle not found.', 404);
+      throw new AppError('CONFLICT', 'This vehicle cannot be submitted in its current verification state.', 409, {
+        code: 'INVALID_VERIFICATION_STATE',
+      });
+    }
     await transaction.verificationAudit.create({
       data: {
         adminId: userId,
@@ -64,7 +84,7 @@ async function listQueue(page, limit) {
     prisma.vehicle.findMany({
       where,
       include: {
-        owner: { select: { id: true, name: true, email: true, phone: true } },
+        owner: { select: { name: true, email: true, phone: true } },
         documents: {
           where: { supersededAt: null },
           orderBy: { createdAt: 'desc' },
@@ -86,12 +106,24 @@ async function getVehicleReview(vehicleId) {
   const vehicle = await prisma.vehicle.findFirst({
     where: { id: vehicleId, deletedAt: null, verificationStatus: 'UNDER_REVIEW' },
     include: {
-      owner: { select: { id: true, name: true, email: true, phone: true } },
+      owner: { select: { name: true, email: true, phone: true } },
       documents: { orderBy: { createdAt: 'desc' } },
     },
   });
   if (!vehicle) throw new AppError('NOT_FOUND', 'Verification record not found.', 404);
-  return { ...vehicle, documents: vehicle.documents.map(reviewDocument) };
+  const audit = await prisma.verificationAudit.findMany({
+    where: {
+      OR: [
+        { targetType: 'VEHICLE', targetId: vehicleId },
+        {
+          targetType: 'DOCUMENT',
+          targetId: { in: vehicle.documents.map((document) => document.id) },
+        },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  return { ...vehicle, documents: vehicle.documents.map(reviewDocument), audit };
 }
 
 async function decideDocument(adminId, documentId, action, reason = null) {
@@ -167,7 +199,10 @@ async function decideDocument(adminId, documentId, action, reason = null) {
 }
 
 async function listDrivers(query) {
-  const where = { backgroundCheckStatus: query.backgroundCheckStatus };
+  const where = {
+    backgroundCheckStatus: query.backgroundCheckStatus,
+    user: { role: 'DRIVER' },
+  };
   const [items, total] = await Promise.all([
     prisma.driverProfile.findMany({
       where,
@@ -254,13 +289,6 @@ async function decideDriver(adminId, userId, action, reason = null) {
   return prisma.driverProfile.findUnique({ where: { userId } });
 }
 
-async function getAudit(targetType, targetId) {
-  return prisma.verificationAudit.findMany({
-    where: { targetType, targetId },
-    orderBy: { createdAt: 'desc' },
-  });
-}
-
 module.exports = {
   submitVehicle,
   listQueue,
@@ -268,5 +296,4 @@ module.exports = {
   decideDocument,
   listDrivers,
   decideDriver,
-  getAudit,
 };

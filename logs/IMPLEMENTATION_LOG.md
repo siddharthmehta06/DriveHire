@@ -80,3 +80,12 @@
 **Review:** Admin-only access, missing-license rejection, status guard enforcement, single-decision race behavior, required rejection reason, owner notification, and audit persistence verified.
 **Related errors:** none
 **Next:** F03 Phase 4 admin portal and owner verification timeline.
+
+## IMP-010 | F03 | Phases 4-5 | 2026-10-12
+**Summary:** Added the administrator vehicle and driver review portal, authenticated document downloads, rejection-reason dialog, review audit history, and owner verification timeline with submission action.
+**Files added/changed:** client/src/App.jsx, client/src/App.test.jsx, client/src/features/verification/, client/src/features/vehicles/VehicleDashboard.jsx, client/src/features/vehicles/api.js, client/src/styles.css, server/src/jobs/documentExpiry.js, server/src/lib/events.js, server/src/modules/documents/service.js, server/src/modules/vehicles/service.js, server/src/modules/verification/, logs/ERROR_LOG.md, client/dist/
+**Decisions:** Verification submissions are allowed only from UNVERIFIED, REJECTED, or EXPIRED states; the conditional update prevents concurrent resubmissions and preserves VERIFIED status. Admin review responses expose only owner name and contact details.
+**Tests:** `docker compose --profile test run --build --rm test` → 5 server suites, 42 tests, and 4 client tests passed; `npm run build:client`, `npx prisma validate`, fresh-database `prisma migrate reset` and `prisma migrate deploy`, and `git diff --check` passed. No lint script is configured.
+**Review:** R1-R10 and F03 section 8 reviewed. Admin routes remain role-protected; verified state requires both current approved required documents including commercial insurance; expiry recomputation and audit, minimal owner data, race-safe document decisions, and loading/empty/error UI states verified. E-017 and E-018 resolved; no outstanding BLOCKER/MAJOR findings.
+**Related errors:** E-015, E-016, E-017, E-018
+**Next:** F03 feature gate review; remote `dev` branch/PR merge requirement remains unresolved.

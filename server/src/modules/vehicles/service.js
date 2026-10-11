@@ -55,7 +55,7 @@ async function setVerificationStatus(id, status) {
     data: { verificationStatus: status },
   });
 
-  emit('vehicle.verification-changed', { id, status, vehicle: { ...updated, photoUrls: parsePhotoUrls(updated.photoUrls) } });
+  await emit('vehicle.verification-changed', { id, status, vehicle: { ...updated, photoUrls: parsePhotoUrls(updated.photoUrls) } });
   return { ...updated, photoUrls: parsePhotoUrls(updated.photoUrls) };
 }
 

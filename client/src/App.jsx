@@ -3,6 +3,7 @@ import { LoginPage } from './features/auth/LoginPage';
 import { VehicleDashboard } from './features/vehicles/VehicleDashboard';
 import { LegalPage } from './pages/LegalPage';
 import { DocumentPortalPage } from './features/documents/DocumentPortalPage';
+import { AdminVerificationPage } from './features/verification/AdminVerificationPage';
 
 export function ProtectedRoute({ roles, children }) {
   const { user } = useAuth();
@@ -21,6 +22,13 @@ export function App() {
     return (
       <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
         <DocumentPortalPage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/admin/verifications' || pathname === '/admin/drivers') {
+    return (
+      <ProtectedRoute roles={['ADMIN']}>
+        <AdminVerificationPage view={pathname === '/admin/drivers' ? 'drivers' : 'vehicles'} />
       </ProtectedRoute>
     );
   }

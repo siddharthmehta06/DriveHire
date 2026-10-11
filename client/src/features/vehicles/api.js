@@ -37,3 +37,7 @@ export async function setVehicleAvailability(token, id, isAvailable) {
 export async function deleteVehicle(token, id) {
   return apiRequest(`/vehicles/${id}`, { method: 'DELETE', token });
 }
+
+export async function submitVehicleForVerification(token, id) {
+  return apiRequest(`/vehicles/${encodeURIComponent(id)}/submit-verification`, { method: 'POST', token });
+}

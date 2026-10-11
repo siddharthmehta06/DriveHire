@@ -96,7 +96,7 @@ async function upload(ownerId, input, file, ownerRole) {
     throw error;
   }
 
-  emit('document.uploaded', { id: document.id, ownerId, vehicleId: document.vehicleId, type: document.type });
+  await emit('document.uploaded', { id: document.id, ownerId, vehicleId: document.vehicleId, type: document.type });
   return publicDocument(document);
 }
 

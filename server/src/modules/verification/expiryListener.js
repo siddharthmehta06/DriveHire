@@ -21,11 +21,10 @@ async function handleDocumentUploaded(document) {
 }
 
 function observe(eventName, handler, message) {
-  on(eventName, (document) => {
-    handler(document).catch((error) => {
+  on(eventName, (document) => handler(document).catch((error) => {
       logger.error({ err: error, documentId: document.id }, message);
-    });
-  });
+      throw error;
+    }));
 }
 
 observe('document.expired', handleExpiredDocument, 'Document expiry verification update failed');
