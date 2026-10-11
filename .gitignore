@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.local
+*.db
+coverage
+server/uploads/**
+!server/uploads/.gitkeep
+Docs/ERROR_LOG.md
+Docs/IMPLEMENTATION_LOG.md
+.gitignore

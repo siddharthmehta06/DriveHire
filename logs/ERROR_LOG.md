@@ -1,0 +1,82 @@
+# Error Log
+
+## E-001 | F01 | Phase 1 | Status: RESOLVED
+**Detected by:** build
+**Symptom:** Prisma rejected the SQLite schema during `npm test` because `String[]` and enum fields are unsupported by the current connector.
+**Root cause:** The project was configured for SQLite local testing while the schema used Prisma array and enum features that require a different provider.
+**Fix:** Simplified the schema to SQLite-compatible string fields and JSON-encoded photo URLs, then adjusted the service layer to normalize photo URL arrays when reading and writing.
+**Files:** prisma/schema.prisma, server/src/modules/vehicles/service.js
+**Prevention:** Keep schema features provider-compatible for the active database, and validate `prisma db push` before running the wider suite.
+**Resolved in:** IMP-001
+
+## E-002 | F01 | Docker setup | Status: RESOLVED
+**Detected by:** build
+**Symptom:** `npx prisma validate` reported that the configured datasource URL must use `postgresql://` after the Prisma provider was changed to PostgreSQL.
+**Root cause:** The ignored local `.env` still contained the previous SQLite URL.
+**Fix:** Updated the local `.env` database URL to the Compose-mapped PostgreSQL endpoint and updated `.env.example` to match.
+**Files:** .env, .env.example
+**Prevention:** Keep local environment settings synchronized with the Prisma provider and the documented Compose ports.
+**Resolved in:** IMP-002
+
+## E-003 | F01 | Docker setup | Status: RESOLVED
+**Detected by:** runtime
+**Symptom:** `docker compose up --build -d` could not connect to `dockerDesktopLinuxEngine` because the Docker daemon pipe was unavailable.
+**Root cause:** Docker Desktop's Linux engine is not running in this environment.
+**Fix:** Started Docker Desktop's Linux engine; `docker ps` then returned successfully.
+**Files:** none
+**Prevention:** Start Docker Desktop and confirm its Linux engine is running before building or starting Compose services.
+**Resolved in:** IMP-003
+
+## E-005 | F01 | Phase 3 | Status: RESOLVED
+**Detected by:** runtime
+**Symptom:** Seeding the newly added role accounts stopped with `ReferenceError: users is not defined` at `server/src/prisma/seed.js:68`.
+**Root cause:** The vehicle seed still referenced the old local variable after it was renamed to `owner`.
+**Fix:** Corrected the vehicle seed to reference the renamed `owner` variable.
+**Files:** server/src/prisma/seed.js
+**Prevention:** Run the seed end-to-end after modifying seeded account relationships.
+**Resolved in:** IMP-004
+
+## E-006 | F01 | Phase 3 | Status: RESOLVED
+**Detected by:** runtime
+**Symptom:** Browser edit flow returned HTTP 400 when saving vehicle details after testing vehicle creation.
+**Root cause:** The edit form submitted its disabled registration-number field, which the strict update schema correctly rejects as non-editable.
+**Fix:** Omit the registration number when building an update payload for an existing vehicle.
+**Files:** client/src/features/vehicles/api.js, client/src/features/vehicles/VehicleForm.jsx, server/src/modules/vehicles/controller.js, server/src/modules/vehicles/service.js
+**Prevention:** Exercise vehicle updates through the browser against the real API, not only the frontend build.
+**Resolved in:** IMP-004
+
+## E-007 | F01 | Phase 3 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The Docker aggregate `npm test` ran Jest against `client/src/App.test.jsx`, which failed because Jest does not transform the client's JSX/Vitest test setup.
+**Root cause:** The server Jest command searched the whole repository and discovered the frontend test despite its separate Vitest runner.
+**Fix:** Restrict the server Jest invocation to `server/src`; the aggregate test command then runs Vitest separately through `npm run test:client`.
+**Files:** package.json
+**Prevention:** Keep test runners scoped to their configured source trees.
+**Resolved in:** IMP-004
+
+## E-008 | F01 | Phase 3 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** Re-running the integration suite against the persistent Docker test database failed vehicle creation with `REGISTRATION_EXISTS`.
+**Root cause:** A prior suite version used a different owner UUID and left its vehicle rows in the shared test database; cleanup targeted only the current test owner's ID.
+**Fix:** Clean up all fixed test registration numbers before and after each test in the isolated test database.
+**Files:** server/src/modules/vehicles/__tests__/vehicle.integration.test.js
+**Prevention:** Make fixture cleanup independent of the specific owner identifier when using a persistent test database.
+**Resolved in:** IMP-004
+
+## E-004 | F01 | Docker setup | Status: RESOLVED
+**Detected by:** runtime
+**Symptom:** The API exited during startup, and the test profile failed with `Could not parse schema engine response` after Prisma could not detect OpenSSL in `node:20-alpine`.
+**Root cause:** Prisma 5's query/schema engines require an OpenSSL library that is not available in the selected Alpine image.
+**Fix:** Switched to `node:20-bookworm-slim` and installed OpenSSL and CA certificates in the image.
+**Files:** Dockerfile
+**Prevention:** Use a Prisma-supported base image with OpenSSL installed and confirm both schema push and API startup inside the built image.
+**Resolved in:** IMP-003
+
+## E-009 | F01 | Phase 4 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** `prisma migrate deploy` on the fresh migration-check database reported `No migration found in prisma/migrations`.
+**Root cause:** The one-off test container used a previously built image that predated the new migration files.
+**Fix:** Rebuilt the test image after adding the migration and reran reset/deploy against a dedicated empty PostgreSQL database.
+**Files:** prisma/migrations/20261011175000_f01_vehicle_baseline/migration.sql
+**Prevention:** Rebuild the test image after changing Prisma migration files before validating migration deployment.
+**Resolved in:** IMP-005
