@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       '/api': apiProxyTarget,
       '/uploads': apiProxyTarget,
+      '/socket.io': { target: apiProxyTarget, ws: true },
     },
   },
   test: {

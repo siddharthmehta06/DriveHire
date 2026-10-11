@@ -18,6 +18,34 @@ export function App() {
   if (pathname === '/terms') return <LegalPage type="terms" />;
   if (pathname === '/privacy') return <LegalPage type="privacy" />;
   if (!user) return <LoginPage />;
+  if (pathname === '/rides/search') {
+    return (
+      <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
+        <SearchRidesPage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/rides/post') {
+    return (
+      <ProtectedRoute roles={['DRIVER']}>
+        <PostRidePage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/rides/mine') {
+    return (
+      <ProtectedRoute roles={['DRIVER']}>
+        <MyRidesPage />
+      </ProtectedRoute>
+    );
+  }
+  if (/^\/rides\/[^/]+$/.test(pathname)) {
+    return (
+      <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
+        <RideDetailPage />
+      </ProtectedRoute>
+    );
+  }
   if (pathname === '/documents') {
     return (
       <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>

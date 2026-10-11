@@ -113,6 +113,7 @@ model Vehicle {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   documents           VehicleDocument[]
+  rides               CarpoolRide[]
 
   @@index([ownerId])
   @@map("vehicles")
@@ -174,4 +175,32 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
   @@map("notifications")
+}
+
+model CarpoolRide {
+  id             String     @id @default(uuid())
+  driverId       String
+  driver         User       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicleId      String
+  vehicle        Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  originText     String
+  originLat      Decimal    @db.Decimal(9, 6)
+  originLng      Decimal    @db.Decimal(9, 6)
+  destText       String
+  destLat        Decimal    @db.Decimal(9, 6)
+  destLng        Decimal    @db.Decimal(9, 6)
+  distanceKm     Decimal?   @db.Decimal(7, 2)
+  departureTime  DateTime
+  totalSeats     Int
+  availableSeats Int
+  costPerSeat    Decimal    @db.Decimal(10, 2)
+  notes          String?
+  status         RideStatus @default(OPEN)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([status, departureTime])
+  @@index([driverId])
+  @@index([vehicleId, status, departureTime])
+  @@map("carpool_rides")
 }
