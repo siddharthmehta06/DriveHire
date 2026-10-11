@@ -98,3 +98,12 @@
 **Review:** Migration, relations, required indexes, raw database constraints, deterministic ride seeds, and existing sample accounts reviewed; no phase-one findings.
 **Related errors:** none
 **Next:** F04 Phase 2 posting, detail, driver rides, cancellation APIs and vehicle commitment check.
+
+## IMP-012 | F04 | Phase 2 | 2026-10-12
+**Summary:** Added authenticated APIs to post rides, retrieve privacy-safe ride detail, list a driver's paginated rides, and cancel open/full rides. Posting calls F03 approval guards, checks ownership/availability/capacity and 30-minute lead time, enforces the vehicle's three-hour ride gap under a vehicle row lock, and registers the F01 vehicle commitment check.
+**Files added/changed:** server/src/app.js, server/src/modules/rides/schema.js, server/src/modules/rides/service.js, server/src/modules/rides/controller.js, server/src/modules/rides/routes.js, server/src/modules/rides/__tests__/rides.integration.test.js, .env.example, Docs/RUNNING.md, Docs/README.md, logs/ERROR_LOG.md
+**Decisions:** Client seat availability is not accepted; it is initialized to total seats. Ride details expose only the driver's first name and vehicle description. Ownership-scoped vehicle lookup occurs before the verification guard to prevent status probing.
+**Tests:** `docker compose --profile test run --build --rm test` → 6 server suites, 49 tests, and 4 client tests passed; `npx prisma validate` and `git diff --check` passed. Focused tests cover approvals, vehicle state/ownership, seat and departure constraints, schedule conflict, API pagination, privacy, cancellation ownership/event, and commitments.
+**Review:** R1-R10 and Phase 2 DoD reviewed; admin/passenger access to driver-only endpoints is denied, arbitrary fields are rejected, race-safe vehicle locking protects schedule gaps, cancellations conditionally transition once, and inaccessible vehicle IDs are masked. E-019 and E-020 resolved.
+**Related errors:** E-019, E-020
+**Next:** F04 Phase 3 search filters, authenticated Socket.IO rooms and live seat updates.

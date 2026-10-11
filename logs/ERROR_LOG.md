@@ -161,3 +161,21 @@
 **Files:** server/src/modules/verification/__tests__/verification.integration.test.js
 **Prevention:** Initialize state-machine API test fixtures in a valid source state for the transition being tested.
 **Resolved in:** IMP-010
+
+## E-019 | F04 | Phase 2 | Status: RESOLVED
+**Detected by:** test
+**Symptom:** The focused ride integration suite failed with `The table public.carpool_rides does not exist in the current database`.
+**Root cause:** The test runner was invoked directly without the test profile's required Prisma schema push.
+**Fix:** Ran `npx prisma db push` against the test profile before rerunning the focused ride integration suite; all six ride tests passed.
+**Files:** none
+**Prevention:** Run Prisma schema setup before focused integration suites, matching the repository's test script.
+**Resolved in:** IMP-012
+
+## E-020 | F04 | Phase 2 | Status: RESOLVED
+**Detected by:** review
+**Symptom:** Ride posting checked vehicle verification before checking ownership, exposing whether an arbitrary vehicle ID was verified.
+**Root cause:** The shared verification guard was called before resolving the vehicle in the caller's owner scope.
+**Fix:** Resolve the vehicle using the caller's ownership scope before checking verification; add a regression test proving a foreign unverified vehicle returns the same 404 as any inaccessible vehicle.
+**Files:** server/src/modules/rides/service.js, server/src/modules/rides/__tests__/rides.integration.test.js
+**Prevention:** Resolve resources through an ownership-scoped query before returning resource-specific state.
+**Resolved in:** IMP-012
