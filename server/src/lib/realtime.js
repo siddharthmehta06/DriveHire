@@ -34,17 +34,49 @@ function initializeRealtime(httpServer) {
       try {
         const ride = await prisma.carpoolRide.findFirst({
           where: { id: rideId, status: { in: ['OPEN', 'FULL', 'IN_PROGRESS'] } },
-          select: { id: true },
+          select: { id: true, driverId: true },
         });
         if (!ride) {
           acknowledge({ success: false, error: 'Ride not found.' });
           return;
         }
+
+        const userId = socket.data.user.id;
+        const isDriver = ride.driverId === userId;
+        let isPassenger = false;
+
+        if (!isDriver) {
+          const booking = await prisma.rideBooking.findFirst({
+            where: {
+              rideId: ride.id,
+              passengerId: userId,
+              active: true,
+              booking: {
+                status: { in: ['ACCEPTED', 'ACTIVE'] },
+              },
+            },
+            select: { bookingId: true },
+          });
+          isPassenger = Boolean(booking);
+        }
+
+        if (!isDriver && !isPassenger) {
+          acknowledge({ success: false, error: 'Unauthorized.' });
+          return;
+        }
+
         await socket.join(`ride:${ride.id}`);
         acknowledge({ success: true, data: { rideId: ride.id } });
       } catch (error) {
         logger.error({ err: error, userId: socket.data.user.id }, 'Socket ride room authorization failed');
         acknowledge({ success: false, error: 'Unable to join ride updates.' });
+      }
+    });
+
+    socket.on('leave:ride', async (rideId, acknowledge = () => {}) => {
+      if (typeof rideId === 'string') {
+        await socket.leave(`ride:${rideId}`);
+        acknowledge({ success: true });
       }
     });
   });

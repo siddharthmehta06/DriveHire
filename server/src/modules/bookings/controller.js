@@ -9,6 +9,8 @@ const {
   rideIdParamSchema,
   myBookingsQuerySchema,
   driverRequestsQuerySchema,
+  updateRideLocationSchema,
+  getRideLocationSchema,
 } = require('./schema');
 
 async function requestBooking(req, res, next) {
@@ -112,6 +114,27 @@ async function listDriverRequests(req, res, next) {
   }
 }
 
+async function updateRideLocation(req, res, next) {
+  try {
+    const { id: rideId } = parseBody(updateRideLocationSchema.params, req.params);
+    const body = parseBody(updateRideLocationSchema.body, req.body);
+    const location = await service.updateRideLocation(req.user.id, rideId, body);
+    return res.json(successResponse(location));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getRideLocation(req, res, next) {
+  try {
+    const { id: rideId } = parseBody(getRideLocationSchema.params, req.params);
+    const location = await service.getRideLocation(req.user.id, rideId);
+    return res.json(successResponse(location));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   requestBooking,
   acceptBooking,
@@ -122,5 +145,7 @@ module.exports = {
   listMyBookings,
   getRideBookings,
   listDriverRequests,
+  updateRideLocation,
+  getRideLocation,
 };
 

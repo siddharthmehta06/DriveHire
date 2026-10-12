@@ -1,7 +1,7 @@
 const prisma = require('../../lib/prisma');
 const { AppError } = require('../../lib/errors');
 const { notify } = require('../../lib/notifications');
-const { emitToUser } = require('../../lib/realtime');
+const { emitToUser, emitToRide } = require('../../lib/realtime');
 const { publishRideSeats } = require('../rides/service');
 
 const PASSENGER_CANCEL_CUTOFF_MIN = 60;
@@ -616,6 +616,97 @@ async function listDriverRequests(driverId, { status = 'PENDING', page = 1, limi
   return { items, total, page, limit };
 }
 
+async function updateRideLocation(driverId, rideId, { lat, lng }) {
+  const ride = await prisma.carpoolRide.findUnique({
+    where: { id: rideId },
+    select: { id: true, driverId: true, status: true },
+  });
+
+  if (!ride || ride.driverId !== driverId) {
+    throw new AppError('NOT_FOUND', 'Ride not found.', 404);
+  }
+
+  if (['CANCELLED', 'COMPLETED'].includes(ride.status)) {
+    throw new AppError('UNPROCESSABLE', 'Location cannot be updated for inactive rides.', 422, {
+      code: 'RIDE_INACTIVE',
+    });
+  }
+
+  const location = await prisma.rideLocation.upsert({
+    where: { rideId },
+    create: {
+      rideId,
+      lat,
+      lng,
+    },
+    update: {
+      lat,
+      lng,
+    },
+  });
+
+  const payload = {
+    rideId: location.rideId,
+    lat: Number(location.lat),
+    lng: Number(location.lng),
+    updatedAt: location.updatedAt,
+  };
+
+  emitToRide(rideId, 'ride:location', payload);
+
+  return payload;
+}
+
+async function getRideLocation(userId, rideId) {
+  const ride = await prisma.carpoolRide.findUnique({
+    where: { id: rideId },
+    select: { id: true, driverId: true },
+  });
+
+  if (!ride) {
+    throw new AppError('NOT_FOUND', 'Ride not found.', 404);
+  }
+
+  const isDriver = ride.driverId === userId;
+  let isPassenger = false;
+
+  if (!isDriver) {
+    const booking = await prisma.rideBooking.findFirst({
+      where: {
+        rideId,
+        passengerId: userId,
+        active: true,
+        booking: {
+          status: { in: ['ACCEPTED', 'ACTIVE'] },
+        },
+      },
+      select: { bookingId: true },
+    });
+    isPassenger = Boolean(booking);
+  }
+
+  if (!isDriver && !isPassenger) {
+    throw new AppError('NOT_FOUND', 'Ride not found.', 404);
+  }
+
+  const location = await prisma.rideLocation.findUnique({
+    where: { rideId },
+  });
+
+  if (!location) {
+    throw new AppError('NOT_FOUND', 'Ride location not available.', 404, {
+      code: 'LOCATION_NOT_FOUND',
+    });
+  }
+
+  return {
+    rideId: location.rideId,
+    lat: Number(location.lat),
+    lng: Number(location.lng),
+    updatedAt: location.updatedAt,
+  };
+}
+
 module.exports = {
   requestBooking,
   acceptBooking,
@@ -627,5 +718,7 @@ module.exports = {
   getRideBookings,
   listDriverRequests,
   classifyBucket,
+  updateRideLocation,
+  getRideLocation,
 };
 

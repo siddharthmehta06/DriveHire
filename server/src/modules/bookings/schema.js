@@ -57,6 +57,22 @@ const driverRequestsQuerySchema = {
   }),
 };
 
+const updateRideLocationSchema = {
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+  body: z.object({
+    lat: z.coerce.number().min(-90).max(90),
+    lng: z.coerce.number().min(-180).max(180),
+  }),
+};
+
+const getRideLocationSchema = {
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+};
+
 module.exports = {
   createBookingSchema,
   bookingIdParamSchema,
@@ -65,5 +81,7 @@ module.exports = {
   rideIdParamSchema,
   myBookingsQuerySchema,
   driverRequestsQuerySchema,
+  updateRideLocationSchema,
+  getRideLocationSchema,
 };
 

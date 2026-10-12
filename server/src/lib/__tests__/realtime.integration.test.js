@@ -84,6 +84,21 @@ beforeAll(async () => {
       costPerSeat: '500.00',
     },
   });
+  await prisma.booking.create({
+    data: {
+      userId: PASSENGER_ID,
+      type: 'RIDE',
+      status: 'ACCEPTED',
+      rideBooking: {
+        create: {
+          rideId: RIDE_ID,
+          passengerId: PASSENGER_ID,
+          seatsBooked: 1,
+          active: true,
+        },
+      },
+    },
+  });
   server = createServer(app);
   initializeRealtime(server);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -92,6 +107,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await closeRealtime();
+  await prisma.rideBooking.deleteMany({ where: { rideId: RIDE_ID } });
+  await prisma.booking.deleteMany({ where: { userId: { in: [DRIVER_ID, PASSENGER_ID, OTHER_ID] } } });
   await prisma.carpoolRide.deleteMany({ where: { id: RIDE_ID } });
   await prisma.vehicle.deleteMany({ where: { registrationNumber: 'REALTIME-TEST-VEHICLE' } });
   await prisma.user.deleteMany({ where: { id: { in: [DRIVER_ID, PASSENGER_ID, OTHER_ID] } } });
@@ -128,6 +145,21 @@ it('authenticates users, authorizes ride rooms, and publishes ride updates', asy
   socket.close();
 });
 
+it('rejects users without an accepted or active booking from joining ride room', async () => {
+  const socket = connect(tokenFor(OTHER_ID, 'USER'));
+  await new Promise((resolve, reject) => {
+    socket.once('connect', resolve);
+    socket.once('connect_error', reject);
+  });
+
+  const denied = await new Promise((resolve) => {
+    socket.timeout(1000).emit('join:ride', RIDE_ID, (error, response) => resolve({ error, response }));
+  });
+  expect(denied.error).toBeNull();
+  expect(denied.response).toEqual({ success: false, error: 'Unauthorized.' });
+  socket.close();
+});
+
 it('does not allow sockets to join arbitrary user rooms or cancelled ride rooms', async () => {
   const socket = connect(tokenFor(PASSENGER_ID, 'USER'));
   await new Promise((resolve, reject) => {
@@ -148,3 +180,4 @@ it('does not allow sockets to join arbitrary user rooms or cancelled ride rooms'
   expect(denied.response).toEqual({ success: false, error: 'Ride not found.' });
   socket.close();
 });
+

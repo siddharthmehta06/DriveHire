@@ -115,7 +115,14 @@
 **Tests:** `docker compose --profile test run --build --rm test` → 10 server suites, 69 tests, and 2 client suites, 9 tests passed. Verified bucket classification across all status and departure variations, ride lifecycle transitions, and driver-scoped request queries.
 **Review:** R1-R10 and F05 section 8 reviewed; driver-only routes protected; caller cannot access other users' bookings; booking.completed emitted per completed booking; no blocker or major findings.
 **Related errors:** none
-**Next:** F05 Phase 4 — Live tracking (location endpoints, room authorization, ride:location events).
+## IMP-014 | F05 | Phase 4 | 2026-10-12
+**Summary:** Implemented live ride tracking endpoints (POST and GET /api/rides/:id/location), socket room join authorization restricting ride:<id> exclusively to the driver and accepted/active passengers, and live ride:location event broadcasting.
+**Files added/changed:** server/src/lib/realtime.js, server/src/modules/bookings/schema.js, server/src/modules/bookings/service.js, server/src/modules/bookings/controller.js, server/src/modules/bookings/routes.js, server/src/modules/bookings/__tests__/tracking.integration.test.js, server/src/lib/__tests__/realtime.integration.test.js, Docs/README.md
+**Decisions:** Restrict `join:ride` room subscription so only authenticated drivers or passengers with an ACCEPTED or ACTIVE booking can enter the room and receive live location broadcasts; reject non-passengers with `{ success: false, error: 'Unauthorized.' }`; non-driver/non-accepted callers querying GET /api/rides/:id/location receive 404 to prevent coordinate leaks or ride existence probing; coordinates are validated for valid lat (-90 to 90) and lng (-180 to 180) ranges.
+**Tests:** `docker compose --profile test run --build --rm test` → 11 server suites, 77 tests, and 2 client suites, 9 tests passed. Verified that driver updates location, socket room receives `ride:location`, unauthorized sockets are rejected from joining, and unauthorized HTTP requests receive 404.
+**Review:** R1-R10 and F05 section 8 reviewed; privacy preserved (location accessible only to ride's driver and accepted passengers); no coordinate leakage; no blocker or major findings.
+**Related errors:** none
+**Next:** F05 Phase 5 — UI, tests, feature review.
 
 
 

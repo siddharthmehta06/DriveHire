@@ -10,6 +10,8 @@ router.post('/rides/:id/bookings', requireRole('USER', 'DRIVER'), controller.req
 router.get('/rides/:id/bookings', requireRole('DRIVER'), controller.getRideBookings);
 router.post('/rides/:id/start', requireRole('DRIVER'), controller.startRide);
 router.post('/rides/:id/complete', requireRole('DRIVER'), controller.completeRide);
+router.post('/rides/:id/location', requireRole('DRIVER'), controller.updateRideLocation);
+router.get('/rides/:id/location', controller.getRideLocation);
 
 router.post('/bookings/:id/accept', requireRole('DRIVER'), controller.acceptBooking);
 router.post('/bookings/:id/reject', requireRole('DRIVER'), controller.rejectBooking);
