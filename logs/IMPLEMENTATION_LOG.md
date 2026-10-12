@@ -89,3 +89,47 @@
 **Review:** R1-R10 and F03 section 8 reviewed. Admin routes remain role-protected; verified state requires both current approved required documents including commercial insurance; expiry recomputation and audit, minimal owner data, race-safe document decisions, and loading/empty/error UI states verified. E-017 and E-018 resolved; no outstanding BLOCKER/MAJOR findings.
 **Related errors:** E-015, E-016, E-017, E-018
 **Next:** F03 feature gate review; remote `dev` branch/PR merge requirement remains unresolved.
+
+## IMP-011 | F05 | Phase 1 | 2026-10-12
+**Summary:** Added the F05 data layer including Booking, RideBooking, and RideLocation models, enums for BookingType and BookingStatus, and PostgreSQL migration with CHECK and partial unique index constraints.
+**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261012020000_f05_ride_booking/migration.sql, server/src/modules/bookings/__tests__/bookingData.integration.test.js, Docs/README.md
+**Decisions:** Use PostgreSQL partial unique index on (rideId, passengerId) WHERE active to enforce at the database level that passengers cannot hold duplicate active booking requests for the same ride; enforce 1 to 6 seat booking boundary via table-level CHECK constraint.
+**Tests:** `docker compose --profile test run --build --rm test` → 8 server suites, 58 tests, and 2 client suites, 9 tests passed.
+**Review:** R1-R10 reviewed; duplicate active bookings rejected by partial unique index; inactive bookings permit subsequent booking creation; seats boundary CHECK enforced; no blocker or major findings.
+**Related errors:** none
+**Next:** F05 Phase 2 — Request, accept, reject, cancel API and services.
+
+## IMP-012 | F05 | Phase 2 | 2026-10-12
+**Summary:** Implemented the seat request, driver accept with atomic seat decrement, driver reject, passenger cancellation with atomic seat restoration and 60-minute cutoff, and automatic cancellation upon ride.cancelled.
+**Files added/changed:** server/src/modules/bookings/schema.js, server/src/modules/bookings/service.js, server/src/modules/bookings/controller.js, server/src/modules/bookings/routes.js, server/src/modules/bookings/events.js, server/src/app.js, server/src/modules/bookings/__tests__/bookings.integration.test.js, Docs/README.md
+**Decisions:** Accept uses a parameterized atomic raw SQL UPDATE with RETURNING * inside a single transaction to prevent seat overbooking under concurrency; cancellations within 60 minutes of departure are rejected with CANCELLATION_CUTOFF_EXCEEDED; cancelling an ACCEPTED booking on a FULL ride atomically reverts the ride to OPEN and increments availableSeats.
+**Tests:** `docker compose --profile test run --build --rm test` → 9 server suites, 66 tests, and 2 client suites, 9 tests passed. Concurrency test with 10 parallel accepts on a 2-seat ride yielded exactly 2 successes and 8 conflicts with availableSeats = 0.
+**Review:** R1-R10 and F05 section 8 reviewed; seat overbooking prevented under race conditions; status transitions strictly validated; ownership masked with 404; cancellation cutoff enforced server-side; no blocker or major findings.
+**Related errors:** none
+**Next:** F05 Phase 3 — Ride lifecycle (start, complete) & booking list buckets.
+
+## IMP-013 | F05 | Phase 3 | 2026-10-12
+**Summary:** Implemented ride lifecycle operations (start ride and complete ride), bucketed user booking history (upcoming, active, past), driver ride booking queries, incoming driver request queue, and the booking.completed event.
+**Files added/changed:** server/src/modules/bookings/schema.js, server/src/modules/bookings/service.js, server/src/modules/bookings/controller.js, server/src/modules/bookings/routes.js, server/src/modules/bookings/__tests__/rideLifecycle.integration.test.js, Docs/README.md
+**Decisions:** Moving rides to IN_PROGRESS atomically updates accepted bookings to ACTIVE; completing rides moves active bookings to COMPLETED, marks ride bookings inactive, and emits the booking.completed cross-feature event; user booking history classifies bookings into upcoming, active, and past buckets with departure time checks for expired pending/accepted requests.
+**Tests:** `docker compose --profile test run --build --rm test` → 10 server suites, 69 tests, and 2 client suites, 9 tests passed. Verified bucket classification across all status and departure variations, ride lifecycle transitions, and driver-scoped request queries.
+**Review:** R1-R10 and F05 section 8 reviewed; driver-only routes protected; caller cannot access other users' bookings; booking.completed emitted per completed booking; no blocker or major findings.
+**Related errors:** none
+## IMP-014 | F05 | Phase 4 | 2026-10-12
+**Summary:** Implemented live ride tracking endpoints (POST and GET /api/rides/:id/location), socket room join authorization restricting ride:<id> exclusively to the driver and accepted/active passengers, and live ride:location event broadcasting.
+**Files added/changed:** server/src/lib/realtime.js, server/src/modules/bookings/schema.js, server/src/modules/bookings/service.js, server/src/modules/bookings/controller.js, server/src/modules/bookings/routes.js, server/src/modules/bookings/__tests__/tracking.integration.test.js, server/src/lib/__tests__/realtime.integration.test.js, Docs/README.md
+**Decisions:** Restrict `join:ride` room subscription so only authenticated drivers or passengers with an ACCEPTED or ACTIVE booking can enter the room and receive live location broadcasts; reject non-passengers with `{ success: false, error: 'Unauthorized.' }`; non-driver/non-accepted callers querying GET /api/rides/:id/location receive 404 to prevent coordinate leaks or ride existence probing; coordinates are validated for valid lat (-90 to 90) and lng (-180 to 180) ranges.
+**Tests:** `docker compose --profile test run --build --rm test` → 11 server suites, 77 tests, and 2 client suites, 9 tests passed. Verified that driver updates location, socket room receives `ride:location`, unauthorized sockets are rejected from joining, and unauthorized HTTP requests receive 404.
+**Review:** R1-R10 and F05 section 8 reviewed; privacy preserved (location accessible only to ride's driver and accepted passengers); no coordinate leakage; no blocker or major findings.
+**Related errors:** none
+## IMP-015 | F05 | Phase 5 | 2026-10-12
+**Summary:** Implemented the full frontend user interface for carpool ride bookings, passenger booking list, real-time vehicle GPS tracking, and driver ride operations (request queue and lifecycle controls). Added client Vitest test suites and verified end-to-end production build.
+**Files added/changed:** client/src/features/bookings/api.js, client/src/features/bookings/components/BookingModal.jsx, client/src/features/bookings/pages/MyBookingsPage.jsx, client/src/features/bookings/pages/TrackRidePage.jsx, client/src/features/bookings/pages/RideRequestsPage.jsx, client/src/features/bookings/pages/DriverRideManagePage.jsx, client/src/features/rides/pages/RideDetailPage.jsx, client/src/features/rides/pages/MyRidesPage.jsx, client/src/features/rides/components/RideShell.jsx, client/src/App.jsx, client/src/styles.css, client/src/features/bookings/Bookings.test.jsx, Docs/README.md
+**Decisions:** Built all interfaces matching the approved editorial serif and geometric sans design system with flat contrast palette; wired `watchPosition` on DriverRideManagePage with 5-second throttling to prevent API congestion; disabled receipt action button with tooltip pointing to F06; integrated live Leaflet mapping on TrackRidePage with real-time Socket.IO vehicle marker updates.
+**Tests:** `docker compose --profile test run --build --rm test` → 11 server suites, 77 tests, and 3 client suites, 14 tests passed (100% green). `npm run build:client` completed with 0 errors.
+**Review:** Conducted full Section 8 feature-specific review and R1-R10 checklist: atomic seat locking verified, cancellation cutoff enforced, cross-passenger data isolation guaranteed, and privacy protected across HTTP and WebSocket channels.
+**Related errors:** none
+**Next:** Ready for final commit and feature gate validation.
+
+
+

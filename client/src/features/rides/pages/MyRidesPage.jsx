@@ -84,6 +84,9 @@ export function MyRidesPage() {
               <div className="my-ride-actions">
                 <span className={`ride-status-tag ride-status-tag--${ride.status.toLowerCase()}`}>{ride.status.replaceAll('_', ' ')}</span>
                 <SeatBadge availableSeats={ride.availableSeats} totalSeats={ride.totalSeats} />
+                <a className="secondary-button" href={`/driver/rides/${ride.id}`} style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>
+                  Manage & GPS
+                </a>
                 {['OPEN', 'FULL'].includes(ride.status) && (
                   <button className="text-button document-delete-action" disabled={savingId === ride.id} onClick={() => cancel(ride.id)} type="button">
                     {savingId === ride.id ? 'Cancelling…' : 'Cancel ride'}

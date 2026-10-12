@@ -6,6 +6,7 @@ import { RouteMap } from '../components/RouteMap';
 import { SeatBadge } from '../components/RideCard';
 import { getRide } from '../api';
 import { useRideSocket } from '../useRideSocket';
+import { BookingModal } from '../../bookings/components/BookingModal';
 
 export function RideDetailPage() {
   const id = window.location.pathname.split('/').filter(Boolean).at(-1);
@@ -13,6 +14,8 @@ export function RideDetailPage() {
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -62,7 +65,23 @@ export function RideDetailPage() {
             </dl>
             <p className="ride-live-status" role="status">{realtime.connected ? 'Live seat availability connected' : 'Live seat availability connecting'}</p>
             {realtime.connectionError && <p className="inline-alert" role="status">{realtime.connectionError}</p>}
-            {user.role === 'DRIVER' && ride.driverId === user.id && <a className="text-button" href="/rides/mine">Manage this ride</a>}
+            {successMessage && (
+              <div className="inline-alert" role="status" style={{ borderColor: 'var(--color-ink, #244b43)' }}>
+                {successMessage} <a className="text-button" href="/bookings">View in My Bookings →</a>
+              </div>
+            )}
+            {user.role === 'DRIVER' && ride.driverId === user.id ? (
+              <a className="text-button" href="/rides/mine">Manage this ride</a>
+            ) : ride.status === 'OPEN' && ride.availableSeats > 0 ? (
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setBookingModalOpen(true)}
+                style={{ marginTop: '1rem', width: '100%' }}
+              >
+                Request seats
+              </button>
+            ) : null}
           </section>
           <section className="ride-detail-map">
             <p className="eyebrow">ROUTE</p>
@@ -71,6 +90,12 @@ export function RideDetailPage() {
           </section>
         </div>
       )}
+      <BookingModal
+        ride={ride}
+        isOpen={bookingModalOpen}
+        onClose={() => setBookingModalOpen(false)}
+        onSuccess={() => setSuccessMessage('Seat request submitted to driver!')}
+      />
     </RideShell>
   );
 }

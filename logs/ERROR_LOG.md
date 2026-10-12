@@ -161,3 +161,32 @@
 **Files:** server/src/modules/verification/__tests__/verification.integration.test.js
 **Prevention:** Initialize state-machine API test fixtures in a valid source state for the transition being tested.
 **Resolved in:** IMP-010
+
+## E-019 | F04 | Baseline | Status: RESOLVED
+**Detected by:** build
+**Symptom:** `npx prisma generate` failed with `Type "RideStatus" is neither a built-in type, nor refers to another model, composite type, or enum.`
+**Root cause:** The `RideStatus` enum was declared in the PostgreSQL migration `20261012003000_f04_carpool_rides` but omitted from `prisma/schema.prisma`.
+**Fix:** Added `enum RideStatus { OPEN FULL IN_PROGRESS COMPLETED CANCELLED }` and `rides CarpoolRide[]` on User to `prisma/schema.prisma`.
+**Files:** prisma/schema.prisma
+**Prevention:** Run `npx prisma validate` and `npx prisma generate` after creating new migrations and models.
+**Resolved in:** baseline-fix
+
+## E-020 | F04 | Baseline | Status: RESOLVED
+**Detected by:** test
+**Symptom:** `rides.integration.test.js` failed with HTTP 404 on `POST /api/rides`.
+**Root cause:** `ridesRoutes` was not mounted in `server/src/app.js`.
+**Fix:** Imported and mounted `ridesRoutes` at `/api` in `server/src/app.js`.
+**Files:** server/src/app.js
+**Prevention:** Register new module routers in `app.js` and run the full test suite before committing.
+**Resolved in:** baseline-fix
+
+## E-021 | F04 | Baseline | Status: RESOLVED
+**Detected by:** test
+**Symptom:** `Rides.test.jsx` failed with `ReferenceError: SearchRidesPage is not defined`, `PostRidePage is not defined`, etc.
+**Root cause:** F04 ride pages were used in `client/src/App.jsx` without corresponding import statements.
+**Fix:** Imported `SearchRidesPage`, `PostRidePage`, `MyRidesPage`, and `RideDetailPage` in `client/src/App.jsx`.
+**Files:** client/src/App.jsx
+**Prevention:** Run frontend tests (`npm run test:client`) before committing UI changes.
+**Resolved in:** baseline-fix
+
+

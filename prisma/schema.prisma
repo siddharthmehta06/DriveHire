@@ -69,6 +69,29 @@ enum NotificationType {
   GENERAL
 }
 
+enum RideStatus {
+  OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingType {
+  RIDE
+  RENTAL
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  ACTIVE
+  COMPLETED
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -82,6 +105,8 @@ model User {
   vehicleDocuments VehicleDocument[] @relation("DocumentOwner")
   notifications Notification[]
   driverProfile DriverProfile?
+  rides         CarpoolRide[]
+  bookings      Booking[]
 
   @@map("users")
 }
@@ -198,9 +223,51 @@ model CarpoolRide {
   status         RideStatus @default(OPEN)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+  bookings       RideBooking[]
+  location       RideLocation?
 
   @@index([status, departureTime])
   @@index([driverId])
   @@index([vehicleId, status, departureTime])
   @@map("carpool_rides")
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         BookingType
+  status       BookingStatus @default(PENDING)
+  bookingDate  DateTime      @default(now())
+  cancelledAt  DateTime?
+  cancelReason String?
+  updatedAt    DateTime      @updatedAt
+  rideBooking  RideBooking?
+
+  @@index([userId, status])
+  @@map("bookings")
+}
+
+model RideBooking {
+  bookingId   String      @id
+  booking     Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  rideId      String
+  ride        CarpoolRide @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passengerId String
+  seatsBooked Int
+  pickupNote  String?
+  active      Boolean     @default(true)
+
+  @@index([rideId])
+  @@map("ride_bookings")
+}
+
+model RideLocation {
+  rideId    String      @id
+  ride      CarpoolRide @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  lat       Decimal     @db.Decimal(9, 6)
+  lng       Decimal     @db.Decimal(9, 6)
+  updatedAt DateTime    @updatedAt
+
+  @@map("ride_locations")
 }
