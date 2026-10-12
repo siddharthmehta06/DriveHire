@@ -89,3 +89,13 @@
 **Review:** R1-R10 and F03 section 8 reviewed. Admin routes remain role-protected; verified state requires both current approved required documents including commercial insurance; expiry recomputation and audit, minimal owner data, race-safe document decisions, and loading/empty/error UI states verified. E-017 and E-018 resolved; no outstanding BLOCKER/MAJOR findings.
 **Related errors:** E-015, E-016, E-017, E-018
 **Next:** F03 feature gate review; remote `dev` branch/PR merge requirement remains unresolved.
+
+## IMP-011 | F05 | Phase 1 | 2026-10-12
+**Summary:** Added the F05 data layer including Booking, RideBooking, and RideLocation models, enums for BookingType and BookingStatus, and PostgreSQL migration with CHECK and partial unique index constraints.
+**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261012020000_f05_ride_booking/migration.sql, server/src/modules/bookings/__tests__/bookingData.integration.test.js, Docs/README.md
+**Decisions:** Use PostgreSQL partial unique index on (rideId, passengerId) WHERE active to enforce at the database level that passengers cannot hold duplicate active booking requests for the same ride; enforce 1 to 6 seat booking boundary via table-level CHECK constraint.
+**Tests:** `docker compose --profile test run --build --rm test` → 8 server suites, 58 tests, and 2 client suites, 9 tests passed.
+**Review:** R1-R10 reviewed; duplicate active bookings rejected by partial unique index; inactive bookings permit subsequent booking creation; seats boundary CHECK enforced; no blocker or major findings.
+**Related errors:** none
+**Next:** F05 Phase 2 — Request, accept, reject, cancel API and services.
+
