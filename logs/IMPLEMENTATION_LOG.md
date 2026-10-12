@@ -108,4 +108,14 @@
 **Related errors:** none
 **Next:** F05 Phase 3 — Ride lifecycle (start, complete) & booking list buckets.
 
+## IMP-013 | F05 | Phase 3 | 2026-10-12
+**Summary:** Implemented ride lifecycle operations (start ride and complete ride), bucketed user booking history (upcoming, active, past), driver ride booking queries, incoming driver request queue, and the booking.completed event.
+**Files added/changed:** server/src/modules/bookings/schema.js, server/src/modules/bookings/service.js, server/src/modules/bookings/controller.js, server/src/modules/bookings/routes.js, server/src/modules/bookings/__tests__/rideLifecycle.integration.test.js, Docs/README.md
+**Decisions:** Moving rides to IN_PROGRESS atomically updates accepted bookings to ACTIVE; completing rides moves active bookings to COMPLETED, marks ride bookings inactive, and emits the booking.completed cross-feature event; user booking history classifies bookings into upcoming, active, and past buckets with departure time checks for expired pending/accepted requests.
+**Tests:** `docker compose --profile test run --build --rm test` → 10 server suites, 69 tests, and 2 client suites, 9 tests passed. Verified bucket classification across all status and departure variations, ride lifecycle transitions, and driver-scoped request queries.
+**Review:** R1-R10 and F05 section 8 reviewed; driver-only routes protected; caller cannot access other users' bookings; booking.completed emitted per completed booking; no blocker or major findings.
+**Related errors:** none
+**Next:** F05 Phase 4 — Live tracking (location endpoints, room authorization, ride:location events).
+
+
 

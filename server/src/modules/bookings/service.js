@@ -337,9 +337,295 @@ async function cancelBooking(passengerId, bookingId, reason) {
   return cancelledBooking;
 }
 
+async function startRide(driverId, rideId) {
+  const ride = await prisma.carpoolRide.findUnique({
+    where: { id: rideId },
+    select: { id: true, driverId: true, status: true },
+  });
+
+  if (!ride || ride.driverId !== driverId) {
+    throw new AppError('NOT_FOUND', 'Ride not found.', 404);
+  }
+
+  if (!['OPEN', 'FULL'].includes(ride.status)) {
+    throw new AppError('CONFLICT', 'Only open or full rides can be started.', 409, {
+      code: 'INVALID_RIDE_STATUS',
+    });
+  }
+
+  const { updatedRide, activatedBookings } = await prisma.$transaction(async (tx) => {
+    const r = await tx.carpoolRide.update({
+      where: { id: rideId },
+      data: { status: 'IN_PROGRESS' },
+    });
+
+    const accepted = await tx.booking.findMany({
+      where: {
+        type: 'RIDE',
+        status: 'ACCEPTED',
+        rideBooking: { rideId },
+      },
+      include: { rideBooking: true },
+    });
+
+    if (accepted.length > 0) {
+      await tx.booking.updateMany({
+        where: {
+          id: { in: accepted.map((b) => b.id) },
+        },
+        data: {
+          status: 'ACTIVE',
+        },
+      });
+    }
+
+    return { updatedRide: r, activatedBookings: accepted };
+  });
+
+  for (const b of activatedBookings) {
+    emitToUser(b.userId, 'booking:updated', { ...b, status: 'ACTIVE' });
+  }
+
+  publishRideSeats(updatedRide).catch(() => {});
+  return updatedRide;
+}
+
+async function completeRide(driverId, rideId) {
+  const { emit } = require('../../lib/events');
+  const ride = await prisma.carpoolRide.findUnique({
+    where: { id: rideId },
+    select: { id: true, driverId: true, status: true },
+  });
+
+  if (!ride || ride.driverId !== driverId) {
+    throw new AppError('NOT_FOUND', 'Ride not found.', 404);
+  }
+
+  if (ride.status !== 'IN_PROGRESS') {
+    throw new AppError('CONFLICT', 'Only in-progress rides can be completed.', 409, {
+      code: 'INVALID_RIDE_STATUS',
+    });
+  }
+
+  const { updatedRide, completedBookings } = await prisma.$transaction(async (tx) => {
+    const r = await tx.carpoolRide.update({
+      where: { id: rideId },
+      data: { status: 'COMPLETED' },
+    });
+
+    const activeOrAccepted = await tx.booking.findMany({
+      where: {
+        type: 'RIDE',
+        status: { in: ['ACTIVE', 'ACCEPTED'] },
+        rideBooking: { rideId },
+      },
+      include: { rideBooking: true },
+    });
+
+    if (activeOrAccepted.length > 0) {
+      await tx.booking.updateMany({
+        where: {
+          id: { in: activeOrAccepted.map((b) => b.id) },
+        },
+        data: {
+          status: 'COMPLETED',
+        },
+      });
+
+      await tx.rideBooking.updateMany({
+        where: {
+          bookingId: { in: activeOrAccepted.map((b) => b.id) },
+        },
+        data: {
+          active: false,
+        },
+      });
+    }
+
+    return { updatedRide: r, completedBookings: activeOrAccepted };
+  });
+
+  for (const b of completedBookings) {
+    const completedBookingRecord = {
+      ...b,
+      status: 'COMPLETED',
+      rideBooking: b.rideBooking ? { ...b.rideBooking, active: false } : null,
+    };
+    emit('booking.completed', { bookingId: b.id, booking: completedBookingRecord, ride: updatedRide }).catch(() => {});
+    emitToUser(b.userId, 'booking:updated', completedBookingRecord);
+  }
+
+  publishRideSeats(updatedRide).catch(() => {});
+  return updatedRide;
+}
+
+function classifyBucket(booking) {
+  if (booking.status === 'ACTIVE') return 'active';
+  const departure = booking.rideBooking?.ride?.departureTime
+    ? new Date(booking.rideBooking.ride.departureTime).getTime()
+    : null;
+  const isFuture = departure !== null ? departure > Date.now() : true;
+
+  if (['PENDING', 'ACCEPTED', 'CONFIRMED'].includes(booking.status)) {
+    return isFuture ? 'upcoming' : 'past';
+  }
+  return 'past'; // COMPLETED, CANCELLED, REJECTED
+}
+
+async function listMyBookings(userId, { bucket, type, page = 1, limit = 20 }) {
+  const where = {
+    userId,
+    ...(type ? { type } : {}),
+  };
+
+  const allUserBookings = await prisma.booking.findMany({
+    where,
+    include: {
+      rideBooking: {
+        include: {
+          ride: {
+            include: {
+              driver: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                },
+              },
+              vehicle: {
+                select: {
+                  id: true,
+                  make: true,
+                  model: true,
+                  vehicleType: true,
+                  registrationNumber: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      bookingDate: 'desc',
+    },
+  });
+
+  let filtered = allUserBookings;
+  if (bucket) {
+    filtered = allUserBookings.filter((b) => classifyBucket(b) === bucket);
+  }
+
+  const total = filtered.length;
+  const startIndex = (page - 1) * limit;
+  const items = filtered.slice(startIndex, startIndex + limit);
+
+  return { items, total, page, limit };
+}
+
+async function getRideBookings(driverId, rideId) {
+  const ride = await prisma.carpoolRide.findUnique({
+    where: { id: rideId },
+    select: { id: true, driverId: true },
+  });
+
+  if (!ride || ride.driverId !== driverId) {
+    throw new AppError('NOT_FOUND', 'Ride not found.', 404);
+  }
+
+  const bookings = await prisma.booking.findMany({
+    where: {
+      rideBooking: {
+        rideId,
+      },
+    },
+    include: {
+      rideBooking: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+    },
+    orderBy: {
+      bookingDate: 'desc',
+    },
+  });
+
+  return bookings;
+}
+
+async function listDriverRequests(driverId, { status = 'PENDING', page = 1, limit = 20 }) {
+  const driverRides = await prisma.carpoolRide.findMany({
+    where: { driverId },
+    select: { id: true },
+  });
+  const rideIds = driverRides.map((r) => r.id);
+
+  if (rideIds.length === 0) {
+    return { items: [], total: 0, page, limit };
+  }
+
+  const where = {
+    type: 'RIDE',
+    status,
+    rideBooking: {
+      rideId: { in: rideIds },
+    },
+  };
+
+  const [total, items] = await Promise.all([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      include: {
+        rideBooking: {
+          include: {
+            ride: {
+              select: {
+                id: true,
+                originText: true,
+                destText: true,
+                departureTime: true,
+                availableSeats: true,
+                totalSeats: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+      orderBy: {
+        bookingDate: 'desc',
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+  ]);
+
+  return { items, total, page, limit };
+}
+
 module.exports = {
   requestBooking,
   acceptBooking,
   rejectBooking,
   cancelBooking,
+  startRide,
+  completeRide,
+  listMyBookings,
+  getRideBookings,
+  listDriverRequests,
+  classifyBucket,
 };
+
