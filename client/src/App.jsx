@@ -4,6 +4,10 @@ import { VehicleDashboard } from './features/vehicles/VehicleDashboard';
 import { LegalPage } from './pages/LegalPage';
 import { DocumentPortalPage } from './features/documents/DocumentPortalPage';
 import { AdminVerificationPage } from './features/verification/AdminVerificationPage';
+import { SearchRidesPage } from './features/rides/pages/SearchRidesPage';
+import { PostRidePage } from './features/rides/pages/PostRidePage';
+import { MyRidesPage } from './features/rides/pages/MyRidesPage';
+import { RideDetailPage } from './features/rides/pages/RideDetailPage';
 
 export function ProtectedRoute({ roles, children }) {
   const { user } = useAuth();
