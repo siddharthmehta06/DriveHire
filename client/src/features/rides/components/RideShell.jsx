@@ -12,9 +12,11 @@ export function RideShell({ user, signOut, children }) {
         <nav aria-label="Main navigation" className="sidebar-nav">
           <a className="sidebar-nav__link" href="/"><span className="nav-index">01</span><span>Vehicle register</span></a>
           <a className="sidebar-nav__link" href="/rides/search"><span className="nav-index">02</span><span>Search rides</span></a>
-          {isDriver && <a className="sidebar-nav__link" href="/rides/post"><span className="nav-index">03</span><span>Post a ride</span></a>}
-          {isDriver && <a className="sidebar-nav__link" href="/rides/mine"><span className="nav-index">04</span><span>My rides</span></a>}
-          <a className="sidebar-nav__link" href="/documents"><span className="nav-index">05</span><span>Documents</span></a>
+          <a className="sidebar-nav__link" href="/bookings"><span className="nav-index">03</span><span>My bookings</span></a>
+          {isDriver && <a className="sidebar-nav__link" href="/rides/post"><span className="nav-index">04</span><span>Post a ride</span></a>}
+          {isDriver && <a className="sidebar-nav__link" href="/rides/mine"><span className="nav-index">05</span><span>My rides</span></a>}
+          {isDriver && <a className="sidebar-nav__link" href="/driver/requests"><span className="nav-index">06</span><span>Ride requests</span></a>}
+          <a className="sidebar-nav__link" href="/documents"><span className="nav-index">07</span><span>Documents</span></a>
         </nav>
         <div className="sidebar-note">
           <span className="sidebar-note__index">DH / ROUTES</span>

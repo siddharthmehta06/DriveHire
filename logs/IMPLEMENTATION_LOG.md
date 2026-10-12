@@ -122,7 +122,14 @@
 **Tests:** `docker compose --profile test run --build --rm test` → 11 server suites, 77 tests, and 2 client suites, 9 tests passed. Verified that driver updates location, socket room receives `ride:location`, unauthorized sockets are rejected from joining, and unauthorized HTTP requests receive 404.
 **Review:** R1-R10 and F05 section 8 reviewed; privacy preserved (location accessible only to ride's driver and accepted passengers); no coordinate leakage; no blocker or major findings.
 **Related errors:** none
-**Next:** F05 Phase 5 — UI, tests, feature review.
+## IMP-015 | F05 | Phase 5 | 2026-10-12
+**Summary:** Implemented the full frontend user interface for carpool ride bookings, passenger booking list, real-time vehicle GPS tracking, and driver ride operations (request queue and lifecycle controls). Added client Vitest test suites and verified end-to-end production build.
+**Files added/changed:** client/src/features/bookings/api.js, client/src/features/bookings/components/BookingModal.jsx, client/src/features/bookings/pages/MyBookingsPage.jsx, client/src/features/bookings/pages/TrackRidePage.jsx, client/src/features/bookings/pages/RideRequestsPage.jsx, client/src/features/bookings/pages/DriverRideManagePage.jsx, client/src/features/rides/pages/RideDetailPage.jsx, client/src/features/rides/pages/MyRidesPage.jsx, client/src/features/rides/components/RideShell.jsx, client/src/App.jsx, client/src/styles.css, client/src/features/bookings/Bookings.test.jsx, Docs/README.md
+**Decisions:** Built all interfaces matching the approved editorial serif and geometric sans design system with flat contrast palette; wired `watchPosition` on DriverRideManagePage with 5-second throttling to prevent API congestion; disabled receipt action button with tooltip pointing to F06; integrated live Leaflet mapping on TrackRidePage with real-time Socket.IO vehicle marker updates.
+**Tests:** `docker compose --profile test run --build --rm test` → 11 server suites, 77 tests, and 3 client suites, 14 tests passed (100% green). `npm run build:client` completed with 0 errors.
+**Review:** Conducted full Section 8 feature-specific review and R1-R10 checklist: atomic seat locking verified, cancellation cutoff enforced, cross-passenger data isolation guaranteed, and privacy protected across HTTP and WebSocket channels.
+**Related errors:** none
+**Next:** Ready for final commit and feature gate validation.
 
 
 

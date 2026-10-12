@@ -8,6 +8,10 @@ import { SearchRidesPage } from './features/rides/pages/SearchRidesPage';
 import { PostRidePage } from './features/rides/pages/PostRidePage';
 import { MyRidesPage } from './features/rides/pages/MyRidesPage';
 import { RideDetailPage } from './features/rides/pages/RideDetailPage';
+import { MyBookingsPage } from './features/bookings/pages/MyBookingsPage';
+import { TrackRidePage } from './features/bookings/pages/TrackRidePage';
+import { RideRequestsPage } from './features/bookings/pages/RideRequestsPage';
+import { DriverRideManagePage } from './features/bookings/pages/DriverRideManagePage';
 
 export function ProtectedRoute({ roles, children }) {
   const { user } = useAuth();
@@ -40,6 +44,34 @@ export function App() {
     return (
       <ProtectedRoute roles={['DRIVER']}>
         <MyRidesPage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/bookings') {
+    return (
+      <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
+        <MyBookingsPage />
+      </ProtectedRoute>
+    );
+  }
+  if (/^\/rides\/[^/]+\/track$/.test(pathname)) {
+    return (
+      <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
+        <TrackRidePage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/driver/requests') {
+    return (
+      <ProtectedRoute roles={['DRIVER']}>
+        <RideRequestsPage />
+      </ProtectedRoute>
+    );
+  }
+  if (/^\/driver\/rides\/[^/]+$/.test(pathname)) {
+    return (
+      <ProtectedRoute roles={['DRIVER']}>
+        <DriverRideManagePage />
       </ProtectedRoute>
     );
   }
