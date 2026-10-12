@@ -99,3 +99,13 @@
 **Related errors:** none
 **Next:** F05 Phase 2 — Request, accept, reject, cancel API and services.
 
+## IMP-012 | F05 | Phase 2 | 2026-10-12
+**Summary:** Implemented the seat request, driver accept with atomic seat decrement, driver reject, passenger cancellation with atomic seat restoration and 60-minute cutoff, and automatic cancellation upon ride.cancelled.
+**Files added/changed:** server/src/modules/bookings/schema.js, server/src/modules/bookings/service.js, server/src/modules/bookings/controller.js, server/src/modules/bookings/routes.js, server/src/modules/bookings/events.js, server/src/app.js, server/src/modules/bookings/__tests__/bookings.integration.test.js, Docs/README.md
+**Decisions:** Accept uses a parameterized atomic raw SQL UPDATE with RETURNING * inside a single transaction to prevent seat overbooking under concurrency; cancellations within 60 minutes of departure are rejected with CANCELLATION_CUTOFF_EXCEEDED; cancelling an ACCEPTED booking on a FULL ride atomically reverts the ride to OPEN and increments availableSeats.
+**Tests:** `docker compose --profile test run --build --rm test` → 9 server suites, 66 tests, and 2 client suites, 9 tests passed. Concurrency test with 10 parallel accepts on a 2-seat ride yielded exactly 2 successes and 8 conflicts with availableSeats = 0.
+**Review:** R1-R10 and F05 section 8 reviewed; seat overbooking prevented under race conditions; status transitions strictly validated; ownership masked with 404; cancellation cutoff enforced server-side; no blocker or major findings.
+**Related errors:** none
+**Next:** F05 Phase 3 — Ride lifecycle (start, complete) & booking list buckets.
+
+
