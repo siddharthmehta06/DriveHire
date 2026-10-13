@@ -10,6 +10,16 @@ const updateCommissionSchema = z.object({
     }),
 }).strict();
 
+const bookingIdSchema = z.object({
+  bookingId: z.string().uuid(),
+}).strict();
+
+const paymentIdSchema = z.object({
+  id: z.string().uuid(),
+}).strict();
+
 module.exports = {
   updateCommissionSchema,
+  bookingIdSchema,
+  paymentIdSchema,
 };

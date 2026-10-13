@@ -11,6 +11,7 @@ const bookingRoutes = require('./modules/bookings/routes');
 const paymentRoutes = require('./modules/payments/routes');
 require('./modules/verification/expiryListener');
 require('./modules/bookings/events');
+require('./modules/payments/events');
 const { attachUser } = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const { successResponse } = require('./lib/response');

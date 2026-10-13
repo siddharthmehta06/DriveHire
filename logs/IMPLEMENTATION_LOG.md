@@ -140,5 +140,14 @@
 **Related errors:** none
 **Next:** Phase 2 (Gateway abstraction & payment creation).
 
+## IMP-017 | F06 | Phase 2 | 2026-10-14
+**Summary:** Implemented payment gateway abstraction with mock gateway and Razorpay test-mode adapter, amount strategy registry with RIDE strategy, and automatic initial PENDING payment creation on booking.completed event.
+**Files added/changed:** .env.example, server/src/modules/payments/gateway/mockGateway.js, server/src/modules/payments/gateway/razorpayGateway.js, server/src/modules/payments/gateway/index.js, server/src/modules/payments/strategies.js, server/src/modules/payments/events.js, server/src/modules/payments/schema.js, server/src/modules/payments/service.js, server/src/modules/payments/controller.js, server/src/modules/payments/routes.js, server/src/app.js, server/src/modules/payments/__tests__/phase2PaymentCreation.integration.test.js, Docs/README.md
+**Decisions:** Created gateway abstraction supporting default `mock` provider (works standalone without credentials) and `razorpay` adapter (converts amount to paise, verifies signatures using crypto constant-time comparison); implemented amount strategy registry (`RIDE` calculates seatsBooked * costPerSeat, extensible for F07 `RENTAL`); hooked `booking.completed` event to create `PENDING` payment with commission snapshot, strict half-up rounding, idempotent duplicate handling, and payer notification; provided `GET /api/payments/booking/:bookingId` with ownership checks.
+**Tests:** `npx jest server/src/modules/payments/__tests__/phase2PaymentCreation.integration.test.js --runInBand` → 1 suite, 19 tests passed; `npx jest server/src/modules/payments/__tests__/pricingConfig.integration.test.js --runInBand` → 1 suite, 19 tests passed (Total 38 tests, 100% green).
+**Review:** Reviewed diff against commit `9e750bd21ea1d15eea4d05736f3a1107bb7039d2` following R1-R10 and F06 checklist: constant-time HMAC comparison implemented with `crypto.timingSafeEqual`, amounts strictly enforce `payeeAmount + commissionAmount = amount`, credentials read exclusively from environment variables, no secrets exposed or logged.
+**Related errors:** none
+**Next:** Phase 3 (Pay online / cash, verification, webhook & earnings).
+
 
 

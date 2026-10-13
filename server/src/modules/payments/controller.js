@@ -1,7 +1,7 @@
 const { parseBody } = require('../../lib/validate');
 const { successResponse } = require('../../lib/response');
 const service = require('./service');
-const { updateCommissionSchema } = require('./schema');
+const { updateCommissionSchema, bookingIdSchema } = require('./schema');
 
 async function getCommission(req, res, next) {
   try {
@@ -25,7 +25,18 @@ async function updateCommission(req, res, next) {
   }
 }
 
+async function getPaymentByBookingId(req, res, next) {
+  try {
+    const { bookingId } = parseBody(bookingIdSchema, req.params);
+    const payment = await service.getPaymentByBookingId(bookingId, req.user.id, req.user.role);
+    return res.json(successResponse(payment));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getCommission,
   updateCommission,
+  getPaymentByBookingId,
 };

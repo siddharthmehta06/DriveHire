@@ -10,7 +10,7 @@ Run instructions for local development and Docker are in [RUNNING.md](RUNNING.md
 | F03 | [Vehicle Verification & Admin Audit](F03-vehicle-verification.md) | F01, F02 | [x] | [x] | [x] | [x] | [x] | [ ] |
 | F04 | [Post Ride & Search Ride](F04-post-and-search-ride.md) | F01, F03 | [x] | [x] | [x] | [x] | n/a | [ ] |
 | F05 | [Ride Booking, Booking List & Tracking](F05-ride-booking.md) | F04 | [x] | [x] | [x] | [x] | [x] | [ ] |
-| F06 | [Payments, Receipts, Commission & Promo](F06-payments.md) | F05 | [x] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| F06 | [Payments, Receipts, Commission & Promo](F06-payments.md) | F05 | [x] | [x] | [ ] | [ ] | [ ] | [ ] |
 | F07 | [P2P Listing & Hourly/Daily Rental](F07-p2p-listing-and-rental.md) | F03, F05, F06 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | F08 | [Earnings & Cash-out](F08-earnings-cashout.md) | F06 | [ ] | [ ] | [ ] | [ ] | n/a | [ ] |
 
