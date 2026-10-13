@@ -7,6 +7,7 @@ const { emitToUser } = require('../../lib/realtime');
 const logger = require('../../lib/logger');
 const { getAmountStrategy } = require('./strategies');
 const { getPaymentGateway, RazorpayPaymentGateway } = require('./gateway');
+const { generateReceiptPdf } = require('./receiptPdf');
 
 async function ensureReceiptSequence() {
   try {
@@ -106,7 +107,6 @@ async function updateCommissionConfig({ commissionRatePct, adminId }) {
 }
 
 async function createPaymentForBooking(bookingId) {
-  // Idempotency: return existing payment if already created
   const existing = await prisma.payment.findUnique({
     where: { bookingId },
   });
@@ -147,7 +147,6 @@ async function createPaymentForBooking(bookingId) {
   const discountAmount = new Prisma.Decimal('0.00');
   const amount = baseAmount.minus(discountAmount);
 
-  // commission = round half-up(amount * rate / 100); payee = amount - commission
   const commissionAmount = amount
     .times(commissionRatePct)
     .dividedBy(100)
@@ -187,7 +186,6 @@ async function createPaymentForBooking(bookingId) {
     return payment;
   } catch (err) {
     if (err.code === 'P2002') {
-      // Duplicate event handled cleanly
       return prisma.payment.findUnique({ where: { bookingId: booking.id } });
     }
     throw err;
@@ -286,8 +284,25 @@ async function processPaymentSuccess(paymentId, { gatewayPaymentId, method = 'ON
     }
 
     if (current.status === 'SUCCEEDED') {
-      // Idempotent: already marked as SUCCEEDED
       return current;
+    }
+
+    // If promo code applied, enforce usage limits and consume usage
+    if (current.promoCodeId) {
+      const promo = await tx.promoCode.findUnique({
+        where: { id: current.promoCodeId },
+      });
+      if (promo) {
+        if (promo.usageLimit != null && promo.usedCount >= promo.usageLimit) {
+          throw new AppError('CONFLICT', 'Promo code usage limit has been reached.', 409);
+        }
+        await tx.promoCode.update({
+          where: { id: promo.id },
+          data: {
+            usedCount: { increment: 1 },
+          },
+        });
+      }
     }
 
     const receiptNumber = current.receiptNumber || (await generateReceiptNumber(tx));
@@ -342,7 +357,6 @@ async function processPaymentSuccess(paymentId, { gatewayPaymentId, method = 'ON
     return updated;
   });
 
-  // Emitted after transaction commits successfully
   emit('payment.succeeded', { paymentId: result.id, payment: result }).catch(() => {});
   emitToUser(result.payerId, 'payment:succeeded', result);
 
@@ -514,7 +528,6 @@ async function confirmCash(paymentId, userId) {
   }
 
   if (payment.status === 'SUCCEEDED') {
-    // Idempotent return
     return {
       ...payment,
       baseAmount: payment.baseAmount.toString(),
@@ -594,6 +607,315 @@ async function completeMockPayment(paymentId, userId, payload = {}) {
   };
 }
 
+// ---------------- Promo Code Management ---------------- //
+
+async function listPromoCodes({ page = 1, limit = 20, active }) {
+  const where = {};
+  if (typeof active === 'boolean') {
+    where.active = active;
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.promoCode.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { validFrom: 'desc' },
+    }),
+    prisma.promoCode.count({ where }),
+  ]);
+
+  return {
+    items: items.map((p) => ({
+      ...p,
+      value: p.value.toString(),
+      maxDiscount: p.maxDiscount ? p.maxDiscount.toString() : null,
+      minAmount: p.minAmount ? p.minAmount.toString() : null,
+    })),
+    total,
+    page,
+    limit,
+  };
+}
+
+async function createPromoCode(data) {
+  const existing = await prisma.promoCode.findUnique({
+    where: { code: data.code },
+  });
+
+  if (existing) {
+    throw new AppError('CONFLICT', `Promo code ${data.code} already exists.`, 409);
+  }
+
+  const created = await prisma.promoCode.create({
+    data: {
+      code: data.code,
+      discountType: data.discountType,
+      value: new Prisma.Decimal(data.value),
+      maxDiscount: data.maxDiscount ? new Prisma.Decimal(data.maxDiscount) : null,
+      minAmount: data.minAmount ? new Prisma.Decimal(data.minAmount) : null,
+      usageLimit: data.usageLimit ?? null,
+      validFrom: new Date(data.validFrom),
+      validUntil: new Date(data.validUntil),
+      active: data.active ?? true,
+    },
+  });
+
+  return {
+    ...created,
+    value: created.value.toString(),
+    maxDiscount: created.maxDiscount ? created.maxDiscount.toString() : null,
+    minAmount: created.minAmount ? created.minAmount.toString() : null,
+  };
+}
+
+async function updatePromoCode(id, data) {
+  const existing = await prisma.promoCode.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    throw new AppError('NOT_FOUND', 'Promo code not found.', 404);
+  }
+
+  if (data.code && data.code !== existing.code) {
+    const codeTaken = await prisma.promoCode.findUnique({
+      where: { code: data.code },
+    });
+    if (codeTaken) {
+      throw new AppError('CONFLICT', `Promo code ${data.code} already exists.`, 409);
+    }
+  }
+
+  const updated = await prisma.promoCode.update({
+    where: { id },
+    data: {
+      ...(data.code ? { code: data.code } : {}),
+      ...(data.discountType ? { discountType: data.discountType } : {}),
+      ...(data.value ? { value: new Prisma.Decimal(data.value) } : {}),
+      ...(data.maxDiscount !== undefined ? { maxDiscount: data.maxDiscount ? new Prisma.Decimal(data.maxDiscount) : null } : {}),
+      ...(data.minAmount !== undefined ? { minAmount: data.minAmount ? new Prisma.Decimal(data.minAmount) : null } : {}),
+      ...(data.usageLimit !== undefined ? { usageLimit: data.usageLimit } : {}),
+      ...(data.validFrom ? { validFrom: new Date(data.validFrom) } : {}),
+      ...(data.validUntil ? { validUntil: new Date(data.validUntil) } : {}),
+      ...(data.active !== undefined ? { active: data.active } : {}),
+    },
+  });
+
+  return {
+    ...updated,
+    value: updated.value.toString(),
+    maxDiscount: updated.maxDiscount ? updated.maxDiscount.toString() : null,
+    minAmount: updated.minAmount ? updated.minAmount.toString() : null,
+  };
+}
+
+// ---------------- Promo Apply / Remove ---------------- //
+
+async function applyPromoCode(paymentId, userId, promoCodeStr) {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment || payment.payerId !== userId) {
+    throw new AppError('NOT_FOUND', 'Payment not found.', 404);
+  }
+
+  if (payment.status === 'SUCCEEDED') {
+    throw new AppError('CONFLICT', 'Cannot apply promo code to a completed payment.', 409);
+  }
+
+  if (payment.status === 'CANCELLED') {
+    throw new AppError('UNPROCESSABLE', 'Payment is cancelled.', 422);
+  }
+
+  const promo = await prisma.promoCode.findUnique({
+    where: { code: promoCodeStr.toUpperCase() },
+  });
+
+  if (!promo || !promo.active) {
+    throw new AppError('UNPROCESSABLE', 'Promo code is invalid or inactive.', 422);
+  }
+
+  const now = new Date();
+  if (now < new Date(promo.validFrom) || now > new Date(promo.validUntil)) {
+    throw new AppError('UNPROCESSABLE', 'Promo code has expired or is not yet valid.', 422);
+  }
+
+  if (promo.usageLimit != null && promo.usedCount >= promo.usageLimit) {
+    throw new AppError('UNPROCESSABLE', 'Promo code usage limit has been reached.', 422);
+  }
+
+  if (promo.minAmount != null && payment.baseAmount.lessThan(promo.minAmount)) {
+    throw new AppError(
+      'UNPROCESSABLE',
+      `Payment amount ₹${payment.baseAmount.toString()} is below the minimum required ₹${promo.minAmount.toString()}.`,
+      422
+    );
+  }
+
+  // Calculate discount
+  let rawDiscount;
+  if (promo.discountType === 'PERCENT') {
+    rawDiscount = payment.baseAmount.times(promo.value).dividedBy(100);
+    if (promo.maxDiscount != null && rawDiscount.greaterThan(promo.maxDiscount)) {
+      rawDiscount = promo.maxDiscount;
+    }
+  } else {
+    rawDiscount = promo.value;
+  }
+
+  let discountAmount = rawDiscount.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  if (discountAmount.greaterThan(payment.baseAmount)) {
+    discountAmount = payment.baseAmount;
+  }
+
+  const amount = payment.baseAmount.minus(discountAmount);
+  const commissionAmount = amount
+    .times(payment.commissionRatePct)
+    .dividedBy(100)
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const payeeAmount = amount.minus(commissionAmount);
+
+  const updated = await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      promoCodeId: promo.id,
+      discountAmount,
+      amount,
+      commissionAmount,
+      payeeAmount,
+    },
+    include: { promoCode: true },
+  });
+
+  return {
+    ...updated,
+    baseAmount: updated.baseAmount.toString(),
+    discountAmount: updated.discountAmount.toString(),
+    amount: updated.amount.toString(),
+    commissionRatePct: updated.commissionRatePct.toString(),
+    commissionAmount: updated.commissionAmount.toString(),
+    payeeAmount: updated.payeeAmount.toString(),
+  };
+}
+
+async function removePromoCode(paymentId, userId) {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment || payment.payerId !== userId) {
+    throw new AppError('NOT_FOUND', 'Payment not found.', 404);
+  }
+
+  if (payment.status === 'SUCCEEDED') {
+    throw new AppError('CONFLICT', 'Cannot remove promo code from a completed payment.', 409);
+  }
+
+  if (payment.status === 'CANCELLED') {
+    throw new AppError('UNPROCESSABLE', 'Payment is cancelled.', 422);
+  }
+
+  const discountAmount = new Prisma.Decimal('0.00');
+  const amount = payment.baseAmount;
+  const commissionAmount = amount
+    .times(payment.commissionRatePct)
+    .dividedBy(100)
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const payeeAmount = amount.minus(commissionAmount);
+
+  const updated = await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      promoCodeId: null,
+      discountAmount,
+      amount,
+      commissionAmount,
+      payeeAmount,
+    },
+  });
+
+  return {
+    ...updated,
+    baseAmount: updated.baseAmount.toString(),
+    discountAmount: updated.discountAmount.toString(),
+    amount: updated.amount.toString(),
+    commissionRatePct: updated.commissionRatePct.toString(),
+    commissionAmount: updated.commissionAmount.toString(),
+    payeeAmount: updated.payeeAmount.toString(),
+  };
+}
+
+// ---------------- Digital Receipts ---------------- //
+
+async function getReceipt(paymentId, userId, userRole) {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      booking: true,
+      promoCode: true,
+      payer: {
+        select: { id: true, name: true, email: true },
+      },
+      payee: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new AppError('NOT_FOUND', 'Payment not found.', 404);
+  }
+
+  const isPayer = payment.payerId === userId;
+  const isPayee = payment.payeeId === userId;
+  const isAdmin = String(userRole || '').toUpperCase() === 'ADMIN';
+
+  if (!isPayer && !isPayee && !isAdmin) {
+    throw new AppError('NOT_FOUND', 'Payment not found.', 404);
+  }
+
+  if (payment.status !== 'SUCCEEDED') {
+    throw new AppError('UNPROCESSABLE', 'Receipt is only available for succeeded payments.', 422);
+  }
+
+  return {
+    id: payment.id,
+    receiptNumber: payment.receiptNumber,
+    bookingId: payment.bookingId,
+    bookingType: payment.booking.type,
+    method: payment.method,
+    status: payment.status,
+    baseAmount: payment.baseAmount.toString(),
+    discountAmount: payment.discountAmount.toString(),
+    amount: payment.amount.toString(),
+    commissionRatePct: payment.commissionRatePct.toString(),
+    commissionAmount: payment.commissionAmount.toString(),
+    payeeAmount: payment.payeeAmount.toString(),
+    paidAt: payment.paidAt,
+    createdAt: payment.createdAt,
+    payer: payment.payer,
+    payee: payment.payee,
+    promoCode: payment.promoCode
+      ? {
+          code: payment.promoCode.code,
+          discountType: payment.promoCode.discountType,
+          value: payment.promoCode.value.toString(),
+        }
+      : null,
+  };
+}
+
+async function getReceiptPdf(paymentId, userId, userRole) {
+  const receiptData = await getReceipt(paymentId, userId, userRole);
+  const pdfBuffer = await generateReceiptPdf(receiptData);
+  return {
+    pdfBuffer,
+    filename: `receipt-${receiptData.receiptNumber}.pdf`,
+  };
+}
+
 module.exports = {
   ensureReceiptSequence,
   getCommissionConfig,
@@ -607,4 +929,11 @@ module.exports = {
   payCash,
   confirmCash,
   completeMockPayment,
+  listPromoCodes,
+  createPromoCode,
+  updatePromoCode,
+  applyPromoCode,
+  removePromoCode,
+  getReceipt,
+  getReceiptPdf,
 };

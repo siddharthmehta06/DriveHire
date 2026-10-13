@@ -8,6 +8,11 @@ const {
   paymentIdSchema,
   verifyPaymentSchema,
   mockCompleteSchema,
+  promoIdSchema,
+  createPromoCodeSchema,
+  updatePromoCodeSchema,
+  promoListQuerySchema,
+  applyPromoSchema,
 } = require('./schema');
 
 async function getCommission(req, res, next) {
@@ -108,6 +113,84 @@ async function completeMock(req, res, next) {
   }
 }
 
+// ---------------- Promo Code Controller Handlers ---------------- //
+
+async function listPromoCodes(req, res, next) {
+  try {
+    const query = parseBody(promoListQuerySchema, req.query);
+    const result = await service.listPromoCodes(query);
+    return res.json(successResponse(result.items, { page: query.page, limit: query.limit, total: result.total }));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function createPromoCode(req, res, next) {
+  try {
+    const data = parseBody(createPromoCodeSchema, req.body);
+    const promo = await service.createPromoCode(data);
+    return res.status(201).json(successResponse(promo));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function updatePromoCode(req, res, next) {
+  try {
+    const { id } = parseBody(promoIdSchema, req.params);
+    const data = parseBody(updatePromoCodeSchema, req.body);
+    const promo = await service.updatePromoCode(id, data);
+    return res.json(successResponse(promo));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function applyPromo(req, res, next) {
+  try {
+    const { id } = parseBody(paymentIdSchema, req.params);
+    const { code } = parseBody(applyPromoSchema, req.body);
+    const updated = await service.applyPromoCode(id, req.user.id, code);
+    return res.json(successResponse(updated));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function removePromo(req, res, next) {
+  try {
+    const { id } = parseBody(paymentIdSchema, req.params);
+    const updated = await service.removePromoCode(id, req.user.id);
+    return res.json(successResponse(updated));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// ---------------- Digital Receipt Controller Handlers ---------------- //
+
+async function getReceipt(req, res, next) {
+  try {
+    const { id } = parseBody(paymentIdSchema, req.params);
+    const receipt = await service.getReceipt(id, req.user.id, req.user.role);
+    return res.json(successResponse(receipt));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getReceiptPdf(req, res, next) {
+  try {
+    const { id } = parseBody(paymentIdSchema, req.params);
+    const { pdfBuffer, filename } = await service.getReceiptPdf(id, req.user.id, req.user.role);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    return res.send(pdfBuffer);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getCommission,
   updateCommission,
@@ -118,4 +201,11 @@ module.exports = {
   payCash,
   confirmCash,
   completeMock,
+  listPromoCodes,
+  createPromoCode,
+  updatePromoCode,
+  applyPromo,
+  removePromo,
+  getReceipt,
+  getReceiptPdf,
 };

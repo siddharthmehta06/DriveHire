@@ -158,5 +158,11 @@
 **Related errors:** none
 **Next:** Phase 4 (Promo codes & receipts).
 
-
-
+## IMP-019 | F06 | Phase 4 | 2026-10-14
+**Summary:** Implemented admin promo-code management, promo application/removal with percentage/flat discount calculation and caps, atomic promo usage tracking, and digital receipts in JSON and PDF (pdfkit) formats.
+**Files added/changed:** package.json, package-lock.json, server/src/modules/payments/schema.js, server/src/modules/payments/service.js, server/src/modules/payments/controller.js, server/src/modules/payments/routes.js, server/src/modules/payments/receiptPdf.js, server/src/modules/payments/__tests__/phase4PromoAndReceipts.integration.test.js, Docs/README.md
+**Decisions:** Restrict admin promo code endpoints to ADMIN; validate unique promo code strings, active dates (validUntil >= validFrom), positive discount values, maximum discount caps, and usage limits; promo application recalculates discount, payable amount, and commission breakdown without mutating usedCount until payment success; promo usage consumption is executed atomically inside the existing processPaymentSuccess transaction, safely preventing limit exhaustion races without double-counting; digital receipts strictly reuse the sequence-generated receiptNumber from the payment record and are authorized for payer, payee, and admin; PDF receipts stream binary via pdfkit with clean styling, breakdown, and disclaimer.
+**Tests:** npx jest server/src/modules/payments/__tests__/phase4PromoAndReceipts.integration.test.js --runInBand -> 1 suite, 15 tests passed; full payments regression suite npx jest server/src/modules/payments/__tests__ --runInBand -> 4 suites, 70 tests passed (100% green).
+**Review:** Reviewed diff against commit ec911548a8fdee873f87f7c51be75241ec37f30f following R1-R10 and F06 checklist: no IDOR (ownership enforced on promo apply/remove and receipts), no secrets exposed in receipt JSON or PDF, Decimal calculations ensure payableAmount = amount - discountAmount, commissionAmount + payeeAmount = amount, atomic concurrency protections on promo limits, and safe state machine transitions.
+**Related errors:** none
+**Next:** Phase 5 (Frontend screens: Payment, Receipt, Admin Commission & Promos, Driver Cash Confirmation).
