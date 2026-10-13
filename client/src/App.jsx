@@ -12,6 +12,10 @@ import { MyBookingsPage } from './features/bookings/pages/MyBookingsPage';
 import { TrackRidePage } from './features/bookings/pages/TrackRidePage';
 import { RideRequestsPage } from './features/bookings/pages/RideRequestsPage';
 import { DriverRideManagePage } from './features/bookings/pages/DriverRideManagePage';
+import { PaymentPage } from './features/payments/pages/PaymentPage';
+import { ReceiptPage } from './features/payments/pages/ReceiptPage';
+import { AdminCommissionPage } from './features/payments/pages/AdminCommissionPage';
+import { AdminPromoCodesPage } from './features/payments/pages/AdminPromoCodesPage';
 
 export function ProtectedRoute({ roles, children }) {
   const { user } = useAuth();
@@ -93,6 +97,34 @@ export function App() {
     return (
       <ProtectedRoute roles={['ADMIN']}>
         <AdminVerificationPage view={pathname === '/admin/drivers' ? 'drivers' : 'vehicles'} />
+      </ProtectedRoute>
+    );
+  }
+  if (/^\/payments\/[^/]+$/.test(pathname)) {
+    return (
+      <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
+        <PaymentPage />
+      </ProtectedRoute>
+    );
+  }
+  if (/^\/receipts\/[^/]+$/.test(pathname)) {
+    return (
+      <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>
+        <ReceiptPage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/admin/pricing') {
+    return (
+      <ProtectedRoute roles={['ADMIN']}>
+        <AdminCommissionPage />
+      </ProtectedRoute>
+    );
+  }
+  if (pathname === '/admin/promo-codes') {
+    return (
+      <ProtectedRoute roles={['ADMIN']}>
+        <AdminPromoCodesPage />
       </ProtectedRoute>
     );
   }

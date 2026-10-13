@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { RideShell } from '../../rides/components/RideShell';
 import { cancelBooking, fetchMyBookings } from '../api';
+import { getPaymentByBooking } from '../../payments/api';
 
 const STATUS_LABELS = {
   PENDING: { label: 'Pending approval', className: 'status-badge--pending' },
@@ -17,6 +18,7 @@ export function MyBookingsPage() {
   const { user, token, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'active' | 'past'
   const [bookings, setBookings] = useState([]);
+  const [paymentsMap, setPaymentsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cancellingId, setCancellingId] = useState(null);
@@ -28,7 +30,25 @@ export function MyBookingsPage() {
     setError('');
     try {
       const response = await fetchMyBookings(token, { bucket, limit: 50 });
-      setBookings(response.data || []);
+      const bookingList = response.data || [];
+      setBookings(bookingList);
+
+      const paymentsObj = {};
+      await Promise.all(
+        bookingList.map(async (b) => {
+          if (b.payment) {
+            paymentsObj[b.id] = b.payment;
+          } else if (['COMPLETED', 'ACTIVE', 'CONFIRMED'].includes(b.status)) {
+            try {
+              const pRes = await getPaymentByBooking(token, b.id);
+              if (pRes?.data) paymentsObj[b.id] = pRes.data;
+            } catch {
+              // ignore
+            }
+          }
+        })
+      );
+      setPaymentsMap(paymentsObj);
     } catch (err) {
       setError(err.message || 'Unable to load bookings.');
     } finally {
@@ -229,16 +249,34 @@ export function MyBookingsPage() {
                       </button>
                     )}
 
-                    {/* Receipt link - disabled until payment module in F06 */}
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled
-                      title="Receipt generation available once payment feature is released (F06)"
-                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    >
-                      Receipt (F06)
-                    </button>
+                    {/* Receipt link when payment succeeded, Pay link when pending, or disabled placeholder */}
+                    {paymentsMap[booking.id]?.status === 'SUCCEEDED' ? (
+                      <a
+                        href={`/receipts/${paymentsMap[booking.id].id}`}
+                        className="secondary-button"
+                        style={{ fontSize: '0.85rem' }}
+                      >
+                        Receipt
+                      </a>
+                    ) : paymentsMap[booking.id] ? (
+                      <a
+                        href={`/payments/${paymentsMap[booking.id].id}`}
+                        className="primary-button"
+                        style={{ fontSize: '0.85rem' }}
+                      >
+                        Pay Fare
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled
+                        title="Receipt generation available once payment feature is released (F06)"
+                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                      >
+                        Receipt (F06)
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>

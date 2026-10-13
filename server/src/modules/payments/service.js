@@ -224,6 +224,41 @@ async function getPaymentByBookingId(bookingId, userId, userRole) {
   };
 }
 
+async function getPaymentById(paymentId, userId, userRole) {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      promoCode: true,
+      booking: true,
+      payer: { select: { id: true, name: true, email: true } },
+      payee: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  if (!payment) {
+    throw new AppError('NOT_FOUND', 'Payment not found.', 404);
+  }
+
+  const isPayer = payment.payerId === userId;
+  const isPayee = payment.payeeId === userId;
+  const isAdmin = String(userRole || '').toUpperCase() === 'ADMIN';
+
+  if (!isPayer && !isPayee && !isAdmin) {
+    throw new AppError('NOT_FOUND', 'Payment not found.', 404);
+  }
+
+  return {
+    ...payment,
+    baseAmount: payment.baseAmount.toString(),
+    discountAmount: payment.discountAmount.toString(),
+    amount: payment.amount.toString(),
+    commissionRatePct: payment.commissionRatePct.toString(),
+    commissionAmount: payment.commissionAmount.toString(),
+    payeeAmount: payment.payeeAmount.toString(),
+    availableMethods: ['ONLINE', 'CASH'],
+  };
+}
+
 async function payOnline(paymentId, userId) {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
@@ -922,6 +957,7 @@ module.exports = {
   updateCommissionConfig,
   createPaymentForBooking,
   getPaymentByBookingId,
+  getPaymentById,
   payOnline,
   verifyPayment,
   processPaymentSuccess,

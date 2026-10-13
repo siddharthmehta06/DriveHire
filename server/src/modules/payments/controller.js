@@ -47,6 +47,16 @@ async function getPaymentByBookingId(req, res, next) {
   }
 }
 
+async function getPaymentById(req, res, next) {
+  try {
+    const { id } = parseBody(paymentIdSchema, req.params);
+    const payment = await service.getPaymentById(id, req.user.id, req.user.role);
+    return res.json(successResponse(payment));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function payOnline(req, res, next) {
   try {
     const { id } = parseBody(paymentIdSchema, req.params);
@@ -195,6 +205,7 @@ module.exports = {
   getCommission,
   updateCommission,
   getPaymentByBookingId,
+  getPaymentById,
   payOnline,
   verifyPayment,
   handleWebhook,

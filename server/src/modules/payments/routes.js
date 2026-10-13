@@ -39,4 +39,7 @@ router.post('/payments/:id/confirm-cash', requireAuth, controller.confirmCash);
 router.get('/payments/:id/receipt.pdf', requireAuth, controller.getReceiptPdf);
 router.get('/payments/:id/receipt', requireAuth, controller.getReceipt);
 
+// Payment details by ID
+router.get('/payments/:id', requireAuth, controller.getPaymentById);
+
 module.exports = router;

@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { RideShell } from '../../rides/components/RideShell';
 import { getRide } from '../../rides/api';
 import { acceptBooking, completeRide, fetchRideBookings, rejectBooking, startRide, updateRideLocation } from '../api';
+import { confirmCash, getPaymentByBooking } from '../../payments/api';
 
 export function DriverRideManagePage() {
   const { user, token, signOut } = useAuth();
@@ -10,6 +11,7 @@ export function DriverRideManagePage() {
 
   const [ride, setRide] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [paymentsMap, setPaymentsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
@@ -31,13 +33,43 @@ export function DriverRideManagePage() {
         fetchRideBookings(token, rideId),
       ]);
       setRide(rideRes.data);
-      setBookings(bookingsRes.data || []);
+      const bookingList = bookingsRes.data || [];
+      setBookings(bookingList);
+
+      // Load associated payment states
+      const paymentsObj = {};
+      await Promise.all(
+        bookingList.map(async (b) => {
+          try {
+            const pRes = await getPaymentByBooking(token, b.id);
+            if (pRes?.data) paymentsObj[b.id] = pRes.data;
+          } catch {
+            // ignore if payment record not yet generated
+          }
+        })
+      );
+      setPaymentsMap(paymentsObj);
     } catch (err) {
       setError(err.message || 'Failed to load ride management data.');
     } finally {
       setLoading(false);
     }
   }, [rideId, token]);
+
+  async function handleConfirmCash(bookingId, paymentId, passengerName, amount) {
+    setError('');
+    setActionSuccess('');
+    try {
+      const res = await confirmCash(token, paymentId);
+      setActionSuccess(`Cash payment of ₹${Number(amount).toFixed(2)} confirmed for ${passengerName || 'passenger'}!`);
+      setPaymentsMap((prev) => ({
+        ...prev,
+        [bookingId]: res.data,
+      }));
+    } catch (err) {
+      setError(err.message || 'Failed to confirm cash payment.');
+    }
+  }
 
   useEffect(() => {
     loadData();
@@ -351,10 +383,61 @@ export function DriverRideManagePage() {
                       </small>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span className={`status-badge status-badge--${b.status.toLowerCase()}`}>
                         {b.status}
                       </span>
+
+                      {/* Payment Status & Driver Cash Confirmation */}
+                      {paymentsMap[b.id] && (
+                        <>
+                          {paymentsMap[b.id].status === 'SUCCEEDED' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span className="status-badge status-badge--verified" style={{ fontSize: '0.75rem' }}>
+                                ✓ Paid ₹{Number(paymentsMap[b.id].amount).toFixed(2)} ({paymentsMap[b.id].method})
+                              </span>
+                              <a
+                                href={`/receipts/${paymentsMap[b.id].id}`}
+                                className="secondary-button"
+                                style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
+                              >
+                                Receipt
+                              </a>
+                            </div>
+                          ) : paymentsMap[b.id].method === 'CASH' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span className="status-badge status-badge--pending" style={{ fontSize: '0.75rem' }}>
+                                Cash Due: ₹{Number(paymentsMap[b.id].amount).toFixed(2)}
+                              </span>
+                              <button
+                                type="button"
+                                className="primary-button"
+                                style={{
+                                  padding: '0.25rem 0.5rem',
+                                  fontSize: '0.75rem',
+                                  background: '#244b43',
+                                  borderColor: '#244b43',
+                                }}
+                                onClick={() =>
+                                  handleConfirmCash(
+                                    b.id,
+                                    paymentsMap[b.id].id,
+                                    b.user?.name,
+                                    paymentsMap[b.id].amount
+                                  )
+                                }
+                              >
+                                Confirm cash received
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="status-badge status-badge--active" style={{ fontSize: '0.75rem' }}>
+                              Online ({paymentsMap[b.id].status})
+                            </span>
+                          )}
+                        </>
+                      )}
+
                       {b.status === 'PENDING' && (
                         <>
                           <button
