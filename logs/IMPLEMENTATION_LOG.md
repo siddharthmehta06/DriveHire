@@ -131,5 +131,14 @@
 **Related errors:** none
 **Next:** Ready for final commit and feature gate validation.
 
+## IMP-016 | F06 | Phase 1 | 2026-10-14
+**Summary:** Implemented data layer models and migration for payments, promo codes, earnings, and pricing config singleton. Created admin commission configuration endpoints with 0-50% validation and singleton CHECK constraints.
+**Files added/changed:** prisma/schema.prisma, prisma/migrations/20261014020000_f06_payments/migration.sql, server/src/prisma/seed.js, server/src/modules/payments/schema.js, server/src/modules/payments/service.js, server/src/modules/payments/controller.js, server/src/modules/payments/routes.js, server/src/app.js, server/src/modules/payments/__tests__/pricingConfig.integration.test.js, Docs/README.md
+**Decisions:** Enforced singleton pattern on `pricing_config` via PostgreSQL `CHECK (id = 1)` and code-level upsert fallback; implemented raw-SQL balance constraints (`payeeAmount + commissionAmount = amount` and `commissionAmount + netAmount = grossAmount`) and non-negative amount checks; initialized `receipt_number_seq` for digital receipts; secured admin commission endpoints (`GET/PUT /api/admin/pricing/commission`) with `requireAuth` and `requireRole('ADMIN')`.
+**Tests:** `npx jest server/src/modules/payments/__tests__/pricingConfig.integration.test.js --runInBand` → 1 suite, 19 tests passed (100% green). Verified 401 unauthenticated, 403 non-admin roles, 400 validation boundaries (negative, >50%, >2 decimal places, extraneous fields), successful update with `updatedById` tracking, and database-level rejection of invalid singleton/balance/negative-amount rows.
+**Review:** Reviewed diff against HEAD commit `cc07fcaa96941374eccc0c1223585c2364317a15` following R1-R10 and F06 checklist: no IDOR, strict Zod validation without mass assignment, Decimal precision preserved, no secrets logged or exposed.
+**Related errors:** none
+**Next:** Phase 2 (Gateway abstraction & payment creation).
+
 
 

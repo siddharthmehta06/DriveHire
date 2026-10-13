@@ -92,6 +92,24 @@ enum BookingStatus {
   COMPLETED
 }
 
+enum PaymentMethod {
+  ONLINE
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENT
+  FLAT
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -107,6 +125,11 @@ model User {
   driverProfile DriverProfile?
   rides         CarpoolRide[]
   bookings      Booking[]
+  payerPayments Payment[]       @relation("PayerPayments")
+  payeePayments Payment[]       @relation("PayeePayments")
+  pricingConfigsUpdated PricingConfig[]
+  earningEntries EarningEntry[]
+  earningsAccount EarningsAccount?
 
   @@map("users")
 }
@@ -243,6 +266,7 @@ model Booking {
   cancelReason String?
   updatedAt    DateTime      @updatedAt
   rideBooking  RideBooking?
+  payment      Payment?
 
   @@index([userId, status])
   @@map("bookings")
@@ -270,4 +294,90 @@ model RideLocation {
   updatedAt DateTime    @updatedAt
 
   @@map("ride_locations")
+}
+
+model Payment {
+  id                String         @id @default(uuid())
+  bookingId         String         @unique
+  payerId           String
+  payeeId           String
+  baseAmount        Decimal        @db.Decimal(10, 2)
+  discountAmount    Decimal        @default(0) @db.Decimal(10, 2)
+  amount            Decimal        @db.Decimal(10, 2)
+  commissionRatePct Decimal        @db.Decimal(5, 2)
+  commissionAmount  Decimal        @db.Decimal(10, 2)
+  payeeAmount       Decimal        @db.Decimal(10, 2)
+  promoCodeId       String?
+  method            PaymentMethod?
+  status            PaymentStatus  @default(PENDING)
+  gatewayProvider   String?
+  gatewayOrderId    String?        @unique
+  gatewayPaymentId  String?
+  failureReason     String?
+  receiptNumber     String?        @unique
+  paidAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  booking           Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payer             User           @relation("PayerPayments", fields: [payerId], references: [id], onDelete: Cascade)
+  payee             User           @relation("PayeePayments", fields: [payeeId], references: [id], onDelete: Cascade)
+  promoCode         PromoCode?     @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  earningEntry      EarningEntry?
+
+  @@map("payments")
+}
+
+model PromoCode {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  discountType DiscountType
+  value       Decimal      @db.Decimal(10, 2)
+  maxDiscount Decimal?     @db.Decimal(10, 2)
+  minAmount   Decimal?     @db.Decimal(10, 2)
+  usageLimit  Int?
+  usedCount   Int          @default(0)
+  validFrom   DateTime
+  validUntil  DateTime
+  active      Boolean      @default(true)
+  payments    Payment[]
+
+  @@map("promo_codes")
+}
+
+model PricingConfig {
+  id                Int      @id @default(1)
+  commissionRatePct Decimal  @default(10) @db.Decimal(5, 2)
+  updatedById       String?
+  updatedBy         User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt         DateTime @updatedAt
+
+  @@map("pricing_config")
+}
+
+model EarningEntry {
+  id               String      @id @default(uuid())
+  earnerId         String
+  earner           User        @relation(fields: [earnerId], references: [id], onDelete: Cascade)
+  paymentId        String      @unique
+  payment          Payment     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  bookingType      BookingType
+  grossAmount      Decimal     @db.Decimal(10, 2)
+  commissionAmount Decimal     @db.Decimal(10, 2)
+  netAmount        Decimal     @db.Decimal(10, 2)
+  withdrawable     Boolean
+  createdAt        DateTime    @default(now())
+
+  @@index([earnerId, createdAt])
+  @@map("earning_entries")
+}
+
+model EarningsAccount {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawableBalance Decimal  @default(0) @db.Decimal(12, 2)
+  totalEarned         Decimal  @default(0) @db.Decimal(12, 2)
+  updatedAt           DateTime @updatedAt
+
+  @@map("earnings_accounts")
 }

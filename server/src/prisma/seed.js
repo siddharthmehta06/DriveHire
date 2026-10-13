@@ -49,6 +49,15 @@ async function main() {
     },
   });
 
+  await prisma.pricingConfig.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      commissionRatePct: 10,
+    },
+  });
+
   await prisma.vehicle.upsert({
     where: { registrationNumber: 'MH12AB1234' },
     update: {},
