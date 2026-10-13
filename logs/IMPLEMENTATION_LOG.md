@@ -149,5 +149,14 @@
 **Related errors:** none
 **Next:** Phase 3 (Pay online / cash, verification, webhook & earnings).
 
+## IMP-018 | F06 | Phase 3 | 2026-10-14
+**Summary:** Implemented online payments, signature verification, Razorpay webhook processing, cash workflows, and atomic idempotent payment success transactions crediting payee earnings.
+**Files added/changed:** server/src/app.js, server/src/modules/payments/schema.js, server/src/modules/payments/service.js, server/src/modules/payments/controller.js, server/src/modules/payments/routes.js, server/src/modules/payments/__tests__/phase3PaymentVerification.integration.test.js, Docs/README.md
+**Decisions:** Populated `req.rawBody` in Express json parser for HMAC webhook signature verification; implemented `processPaymentSuccess` in an atomic Prisma transaction generating `receiptNumber` from sequence, creating `EarningEntry` and upserting `EarningsAccount` (withdrawable balance credited only for ONLINE, cash credits `totalEarned` only); enforced ownership checks on payer and payee routes; supported idempotent re-verification and duplicate webhook deliveries without double-crediting.
+**Tests:** `npx jest server/src/modules/payments/__tests__/phase3PaymentVerification.integration.test.js --runInBand` → 17 passed; `npx jest server/src/modules/payments/__tests__ --runInBand` → 3 suites, 55 tests passed (100% green).
+**Review:** Reviewed diff against commit `8231feb6b6d7ea7d75068ae7a1ac8b0caa15b20d` following R1-R10 and F06 checklist: constant-time HMAC comparison enforced, no IDOR, transaction atomicity and idempotency guaranteed, no secrets exposed.
+**Related errors:** none
+**Next:** Phase 4 (Promo codes & receipts).
+
 
 

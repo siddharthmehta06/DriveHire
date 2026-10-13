@@ -18,7 +18,11 @@ const { successResponse } = require('./lib/response');
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads/vehicles', express.static(path.join(__dirname, '../uploads/vehicles')));
 app.use(attachUser);
@@ -30,10 +34,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api', paymentRoutes);
 app.use('/api', verificationRoutes);
 app.use('/api', rideRoutes);
 app.use('/api', bookingRoutes);
-app.use('/api', paymentRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 
 app.use((req, res) => {
