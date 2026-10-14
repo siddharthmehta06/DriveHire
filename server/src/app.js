@@ -8,15 +8,21 @@ const documentRoutes = require('./modules/documents/routes');
 const verificationRoutes = require('./modules/verification/routes');
 const rideRoutes = require('./modules/rides/routes');
 const bookingRoutes = require('./modules/bookings/routes');
+const paymentRoutes = require('./modules/payments/routes');
 require('./modules/verification/expiryListener');
 require('./modules/bookings/events');
+require('./modules/payments/events');
 const { attachUser } = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const { successResponse } = require('./lib/response');
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads/vehicles', express.static(path.join(__dirname, '../uploads/vehicles')));
 app.use(attachUser);
@@ -28,6 +34,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api', paymentRoutes);
 app.use('/api', verificationRoutes);
 app.use('/api', rideRoutes);
 app.use('/api', bookingRoutes);
