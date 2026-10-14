@@ -3,9 +3,9 @@ const { AppError } = require('../../../lib/errors');
 
 class RazorpayPaymentGateway {
   constructor(options = {}) {
-    this.keyId = options.keyId || process.env.RAZORPAY_KEY_ID;
-    this.keySecret = options.keySecret || process.env.RAZORPAY_KEY_SECRET;
-    this.webhookSecret = options.webhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET;
+    this.keyId = options.keyId !== undefined ? options.keyId : process.env.RAZORPAY_KEY_ID;
+    this.keySecret = options.keySecret !== undefined ? options.keySecret : process.env.RAZORPAY_KEY_SECRET;
+    this.webhookSecret = options.webhookSecret !== undefined ? options.webhookSecret : process.env.RAZORPAY_WEBHOOK_SECRET;
     this.provider = 'razorpay';
   }
 

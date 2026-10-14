@@ -351,4 +351,85 @@ describe('F06 Payments Frontend Flows', () => {
       expect(screen.getByText('50.00%')).toBeInTheDocument();
     });
   });
+
+  it('initiates Razorpay checkout and verifies signature on backend when Razorpay provider is active', async () => {
+    let verified = false;
+    let rzpOptionsPassed = null;
+
+    const mockRzpInstance = {
+      open: vi.fn(),
+    };
+    const RazorpayMock = vi.fn((opts) => {
+      rzpOptionsPassed = opts;
+      return mockRzpInstance;
+    });
+    window.Razorpay = RazorpayMock;
+
+    const fetchMock = vi.fn((url, options) => {
+      if (url === '/api/payments/pay-1' && (!options?.method || options.method === 'GET')) {
+        return jsonResponse(mockPayment);
+      }
+      if (url === '/api/payments/pay-1/pay-online' && options?.method === 'POST') {
+        return jsonResponse({
+          orderId: 'order_rzp_123',
+          keyId: 'rzp_test_mockkey123',
+          amount: '600.00',
+          currency: 'INR',
+          paymentId: 'pay-1',
+          status: 'PROCESSING',
+          provider: 'razorpay',
+        });
+      }
+      if (url === '/api/payments/pay-1/verify' && options?.method === 'POST') {
+        const body = JSON.parse(options.body);
+        if (body.gatewayPaymentId && body.signature) {
+          verified = true;
+          return jsonResponse({
+            ...mockPayment,
+            status: 'SUCCEEDED',
+            receiptNumber: 'DH-20261014-000002',
+          });
+        }
+      }
+      return jsonResponse([], { unreadCount: 0 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    session('USER', 'passenger-1');
+    window.history.pushState({}, '', '/payments/pay-1');
+
+    render(
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Trip Payment')).toBeInTheDocument();
+      expect(screen.getByText(/Pay ₹600.00 Online/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Pay ₹600.00 Online/i));
+
+    await waitFor(() => {
+      expect(RazorpayMock).toHaveBeenCalled();
+      expect(mockRzpInstance.open).toHaveBeenCalled();
+    });
+
+    expect(rzpOptionsPassed.key).toBe('rzp_test_mockkey123');
+    expect(rzpOptionsPassed.order_id).toBe('order_rzp_123');
+
+    // Simulate Razorpay handler callback upon successful payment in popup
+    await rzpOptionsPassed.handler({
+      razorpay_payment_id: 'pay_rzp_test_999',
+      razorpay_order_id: 'order_rzp_123',
+      razorpay_signature: 'test_valid_signature_hash',
+    });
+
+    await waitFor(() => {
+      expect(verified).toBe(true);
+      expect(screen.getByText(/Payment verified and completed successfully!/i)).toBeInTheDocument();
+      expect(screen.getByText('View Digital Receipt')).toBeInTheDocument();
+    });
+  });
 });

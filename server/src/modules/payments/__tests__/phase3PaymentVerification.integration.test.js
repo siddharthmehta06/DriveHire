@@ -17,7 +17,11 @@ let adminToken;
 let testVehicleId;
 let testRideId;
 
+let prevPaymentProvider;
+
 beforeAll(async () => {
+  prevPaymentProvider = process.env.PAYMENT_PROVIDER;
+  process.env.PAYMENT_PROVIDER = 'mock';
   const secret = process.env.JWT_SECRET || 'test-only';
   passengerToken = jwt.sign({ sub: PASSENGER_ID, role: 'USER' }, secret);
   driverToken = jwt.sign({ sub: DRIVER_ID, role: 'DRIVER' }, secret);
@@ -528,5 +532,13 @@ describe('Phase 3 - Payment Verification, Cash Payments, Webhooks and Earnings',
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('SUCCEEDED');
     });
+  });
+
+  afterAll(() => {
+    if (prevPaymentProvider !== undefined) {
+      process.env.PAYMENT_PROVIDER = prevPaymentProvider;
+    } else {
+      delete process.env.PAYMENT_PROVIDER;
+    }
   });
 });

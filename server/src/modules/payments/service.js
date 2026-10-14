@@ -304,6 +304,7 @@ async function payOnline(paymentId, userId) {
     currency: order.currency || 'INR',
     paymentId: updated.id,
     status: updated.status,
+    provider: gateway.provider,
   };
 }
 

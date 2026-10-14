@@ -11,6 +11,28 @@ import {
   verifyPayment,
 } from '../api';
 
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true));
+      existing.addEventListener('error', () => resolve(false));
+      if (window.Razorpay) resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export function PaymentPage() {
   const { user, token, signOut } = useAuth();
   const paymentId = window.location.pathname.split('/').filter(Boolean).at(-1);
@@ -98,8 +120,19 @@ export function PaymentPage() {
       const orderRes = await payOnline(token, paymentId);
       const order = orderRes.data;
 
-      // Check if Razorpay standard checkout is available in browser and not mock key
-      if (window.Razorpay && order.keyId && order.keyId !== 'mock_key_id') {
+      // Determine provider: Razorpay provider configured or real Razorpay key
+      const isRazorpay =
+        order.provider === 'razorpay' ||
+        (order.keyId && order.keyId !== 'mock_key_id');
+
+      if (isRazorpay) {
+        const loaded = await loadRazorpayScript();
+        if (!loaded || !window.Razorpay) {
+          setError('Failed to load Razorpay Checkout SDK. Please check your network connection.');
+          setProcessing(false);
+          return;
+        }
+
         const options = {
           key: order.keyId,
           amount: Math.round(Number(order.amount) * 100),
@@ -112,7 +145,7 @@ export function PaymentPage() {
               const verifyRes = await verifyPayment(token, paymentId, {
                 gatewayPaymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
-                orderId: response.razorpay_order_id || order.orderId,
+                razorpay_order_id: response.razorpay_order_id || order.orderId,
               });
               setPayment(verifyRes.data);
               setSuccessMsg('Payment verified and completed successfully!');
@@ -140,7 +173,7 @@ export function PaymentPage() {
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else {
-        // Mock gateway simulated modal
+        // Mock gateway simulated modal (only for mock provider in development)
         setMockOrder(order);
         setShowMockModal(true);
       }
@@ -155,9 +188,7 @@ export function PaymentPage() {
     setError('');
     setShowMockModal(false);
     try {
-      const res = await completeMockPayment(token, paymentId, {
-        orderId: mockOrder.orderId,
-      });
+      const res = await completeMockPayment(token, paymentId);
       setPayment(res.data);
       setSuccessMsg('Mock payment successful! Receipt has been generated.');
     } catch (err) {
