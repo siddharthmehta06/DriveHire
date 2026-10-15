@@ -770,6 +770,324 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-weight: 400;
 }
 
+/* F06 Payments, Receipts & Admin Pricing Styles */
+.payment-page-container, .admin-page-container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+.payment-grid, .admin-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.payment-card, .admin-card {
+  background: var(--paper-light);
+  border: 1px solid var(--line-strong);
+  padding: 24px;
+}
+.payment-card__title, .admin-card__title {
+  margin: 0 0 16px 0;
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-weight: 400;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.payment-breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 20px 0;
+}
+.payment-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+}
+.payment-breakdown-row dt {
+  color: var(--ink-soft);
+}
+.payment-breakdown-row--discount dt, .payment-breakdown-row--discount dd {
+  color: var(--green);
+  font-weight: 600;
+}
+.payment-breakdown-row--total {
+  border-top: 2px solid var(--line-strong);
+  padding-top: 12px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.payment-breakdown-row--sub {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.payment-breakdown-divider {
+  border-top: 1px dashed var(--line);
+  margin: 6px 0;
+}
+.payment-success-banner {
+  background: #f4f9f6;
+  border: 1px solid #244b43;
+  padding: 16px 20px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.promo-badge {
+  display: inline-block;
+  background: #e2ede8;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 3px;
+}
+.promo-section {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.promo-applied-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f0f4f2;
+  border: 1px dashed #244b43;
+  padding: 10px 14px;
+  border-radius: 4px;
+}
+.promo-input-form {
+  display: flex;
+  gap: 8px;
+}
+.promo-message {
+  font-size: 0.8rem;
+  margin-top: 6px;
+}
+.promo-message--error {
+  color: var(--red);
+}
+.promo-message--success {
+  color: var(--green);
+}
+.method-selection-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.method-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: border-color 0.15s ease;
+}
+.method-option:hover {
+  border-color: var(--green);
+}
+.method-option--selected {
+  border-color: var(--green);
+  background: #f8faf9;
+  outline: 2px solid var(--green);
+}
+.method-option small {
+  display: block;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  font-size: 0.8rem;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal-card {
+  background: var(--paper-light);
+  border: 1px solid var(--line-strong);
+  max-width: 480px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Receipt Page Layout */
+.receipt-view-wrapper {
+  max-width: 720px;
+  margin: 0 auto 3rem auto;
+}
+.receipt-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.receipt-paper {
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  padding: 40px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.receipt-paper__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 20px;
+}
+.receipt-brand {
+  font-family: var(--serif);
+  font-size: 2.2rem;
+  margin: 4px 0 0 0;
+  color: var(--green);
+  letter-spacing: -0.02em;
+}
+.receipt-tagline {
+  margin: 2px 0 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.receipt-meta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.receipt-meta dt {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+.receipt-paper__participants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+.participant-col strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+.participant-col small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+.receipt-table th {
+  text-align: left;
+  border-bottom: 1px solid var(--line-strong);
+  padding: 8px 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.receipt-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.receipt-table__total-row td {
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  font-size: 1.15rem;
+  padding: 14px 0;
+}
+.receipt-paper__footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* Admin Pricing & Promo Table */
+.admin-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+.admin-meta-list dt {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+.admin-table-container {
+  overflow-x: auto;
+  background: var(--paper-light);
+  border: 1px solid var(--line-strong);
+  margin-top: 20px;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-table th {
+  text-align: left;
+  background: #ebe8df;
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line-strong);
+}
+.admin-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+.admin-table tr:hover {
+  background: #f7f6f2;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print, header, nav, .site-header, .site-footer {
+    display: none !important;
+  }
+  .receipt-view-wrapper {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .receipt-paper {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
