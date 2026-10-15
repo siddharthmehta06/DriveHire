@@ -315,8 +315,19 @@ it('searches open future rides by text, date/time, seats, price, radius, sort, a
     status: 'CANCELLED',
   });
 
-  const date = baseDeparture.toISOString().slice(0, 10);
-  const time = baseDeparture.toISOString().slice(11, 16);
+  const indiaFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const parts = indiaFormatter.formatToParts(baseDeparture);
+  const getPart = (t) => parts.find((p) => p.type === t).value;
+  const date = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+  const time = `${getPart('hour')}:${getPart('minute')}`;
   const text = await request(app)
     .get('/api/rides')
     .query({ origin: 'Pune Central', destination: 'Mumbai South', date, timeFrom: time, seats: 2, maxPrice: 500 })

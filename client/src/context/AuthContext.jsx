@@ -22,6 +22,16 @@ export function AuthProvider({ children }) {
     setSession(nextSession);
   }
 
+  async function signUp(credentials) {
+    const result = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: credentials,
+    });
+    const nextSession = result.data;
+    localStorage.setItem('drivehire-session', JSON.stringify(nextSession));
+    setSession(nextSession);
+  }
+
   function signOut() {
     localStorage.removeItem('drivehire-session');
     setSession(null);
@@ -31,6 +41,7 @@ export function AuthProvider({ children }) {
     user: session?.user || null,
     token: session?.token || null,
     signIn,
+    signUp,
     signOut,
   }), [session]);
 

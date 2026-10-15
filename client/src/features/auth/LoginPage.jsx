@@ -8,7 +8,7 @@ const ACCOUNT_TYPES = [
   { value: 'ADMIN', label: 'Admin' },
 ];
 
-export function LoginPage() {
+export function LoginPage({ onSwitchToRegister }) {
   const { signIn } = useAuth();
   const [role, setRole] = useState('USER');
   const [email, setEmail] = useState('');
@@ -128,6 +128,14 @@ export function LoginPage() {
             <span className="security-mark" aria-hidden="true">●</span>
             Your account and vehicle information stay protected.
           </p>
+          {onSwitchToRegister && (
+            <p className="login-panel__security" style={{ marginTop: '1rem' }}>
+              Don&apos;t have an account?{' '}
+              <button type="button" onClick={onSwitchToRegister} className="text-button" style={{ color: 'var(--color-accent, #2563eb)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                Create one now
+              </button>
+            </p>
+          )}
         </div>
         <footer className="legal-footer">
           <span>© {new Date().getFullYear()} DriveHire</span>

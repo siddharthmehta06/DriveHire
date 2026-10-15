@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
+import { RegisterPage } from './features/auth/RegisterPage';
 import { VehicleDashboard } from './features/vehicles/VehicleDashboard';
 import { LegalPage } from './pages/LegalPage';
 import { DocumentPortalPage } from './features/documents/DocumentPortalPage';
@@ -21,11 +23,18 @@ export function ProtectedRoute({ roles, children }) {
 
 export function App() {
   const { user } = useAuth();
+  const [authMode, setAuthMode] = useState('login');
   const pathname = window.location.pathname;
 
   if (pathname === '/terms') return <LegalPage type="terms" />;
   if (pathname === '/privacy') return <LegalPage type="privacy" />;
-  if (!user) return <LoginPage />;
+  if (!user) {
+    return authMode === 'register' ? (
+      <RegisterPage onSwitchToLogin={() => setAuthMode('login')} />
+    ) : (
+      <LoginPage onSwitchToRegister={() => setAuthMode('register')} />
+    );
+  }
   if (pathname === '/rides/search') {
     return (
       <ProtectedRoute roles={['USER', 'DRIVER', 'ADMIN']}>

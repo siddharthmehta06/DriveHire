@@ -203,12 +203,20 @@ export function VehicleDashboard() {
             <span className="nav-index">01</span>
             <span>Vehicle register</span>
           </a>
-          <a className="sidebar-nav__link" href="/documents">
+          <a className="sidebar-nav__link" href="/rides/search">
             <span className="nav-index">02</span>
+            <span>Search rides</span>
+          </a>
+          <a className="sidebar-nav__link" href="/bookings">
+            <span className="nav-index">03</span>
+            <span>My bookings</span>
+          </a>
+          <a className="sidebar-nav__link" href="/documents">
+            <span className="nav-index">04</span>
             <span>Documents</span>
           </a>
-          {isAdmin && <a className="sidebar-nav__link" href="/admin/verifications"><span className="nav-index">03</span><span>Vehicle review</span></a>}
-          {isAdmin && <a className="sidebar-nav__link" href="/admin/drivers"><span className="nav-index">04</span><span>Driver review</span></a>}
+          {isAdmin && <a className="sidebar-nav__link" href="/admin/verifications"><span className="nav-index">05</span><span>Vehicle review</span></a>}
+          {isAdmin && <a className="sidebar-nav__link" href="/admin/drivers"><span className="nav-index">06</span><span>Driver review</span></a>}
         </nav>
         <div className="sidebar-note">
           <span className="sidebar-note__index">DH / 01</span>

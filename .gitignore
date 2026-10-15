@@ -8,3 +8,5 @@ server/uploads/**
 Docs/ERROR_LOG.md
 Docs/IMPLEMENTATION_LOG.md
 .gitignore
+Docs/*.md
+Docs/PROJECT_GAPS.md

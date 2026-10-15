@@ -107,6 +107,10 @@ model User {
   driverProfile DriverProfile?
   rides         CarpoolRide[]
   bookings      Booking[]
+  payerPayments   Payment[]        @relation("PayerPayments")
+  payeePayments   Payment[]        @relation("PayeePayments")
+  earningEntries  EarningEntry[]   @relation("EarnerEntries")
+  earningsAccount EarningsAccount?
 
   @@map("users")
 }
@@ -243,6 +247,7 @@ model Booking {
   cancelReason String?
   updatedAt    DateTime      @updatedAt
   rideBooking  RideBooking?
+  payment      Payment?
 
   @@index([userId, status])
   @@map("bookings")
@@ -270,4 +275,104 @@ model RideLocation {
   updatedAt DateTime    @updatedAt
 
   @@map("ride_locations")
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENT
+  FLAT
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  bookingId         String        @unique
+  booking           Booking       @relation(fields: [bookingId], references: [id])
+  payerId           String
+  payer             User          @relation("PayerPayments", fields: [payerId], references: [id])
+  payeeId           String
+  payee             User          @relation("PayeePayments", fields: [payeeId], references: [id])
+  baseAmount        Decimal       @db.Decimal(10, 2)
+  discountAmount    Decimal       @db.Decimal(10, 2) @default(0)
+  amount            Decimal       @db.Decimal(10, 2)
+  commissionRatePct Decimal       @db.Decimal(5, 2)
+  commissionAmount  Decimal       @db.Decimal(10, 2)
+  payeeAmount       Decimal       @db.Decimal(10, 2)
+  promoCodeId       String?
+  method            PaymentMethod?
+  status            PaymentStatus @default(PENDING)
+  gatewayProvider   String?
+  gatewayOrderId    String?       @unique
+  gatewayPaymentId  String?
+  failureReason     String?
+  receiptNumber     String?       @unique
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([payerId])
+  @@index([payeeId])
+  @@map("payments")
+}
+
+model PromoCode {
+  id           String       @id @default(uuid())
+  code         String       @unique
+  discountType DiscountType
+  value        Decimal      @db.Decimal(10, 2)
+  maxDiscount  Decimal?     @db.Decimal(10, 2)
+  minAmount    Decimal?     @db.Decimal(10, 2)
+  usageLimit   Int?
+  usedCount    Int          @default(0)
+  validFrom    DateTime
+  validUntil   DateTime
+  active       Boolean      @default(true)
+
+  @@map("promo_codes")
+}
+
+model PricingConfig {
+  id                Int      @id @default(1)
+  commissionRatePct Decimal  @db.Decimal(5, 2) @default(10)
+  updatedById       String?
+  updatedAt         DateTime @updatedAt
+
+  @@map("pricing_config")
+}
+
+model EarningEntry {
+  id               String      @id @default(uuid())
+  earnerId         String
+  earner           User        @relation("EarnerEntries", fields: [earnerId], references: [id])
+  paymentId        String      @unique
+  bookingType      BookingType
+  grossAmount      Decimal     @db.Decimal(10, 2)
+  commissionAmount Decimal     @db.Decimal(10, 2)
+  netAmount        Decimal     @db.Decimal(10, 2)
+  withdrawable     Boolean
+  createdAt        DateTime    @default(now())
+
+  @@index([earnerId, createdAt])
+  @@map("earning_entries")
+}
+
+model EarningsAccount {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id])
+  withdrawableBalance Decimal  @db.Decimal(12, 2) @default(0)
+  totalEarned         Decimal  @db.Decimal(12, 2) @default(0)
+  updatedAt           DateTime @updatedAt
+
+  @@map("earnings_accounts")
 }

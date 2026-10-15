@@ -140,9 +140,16 @@ function escapeLike(value) {
 
 function buildDepartureRange(query) {
   const now = new Date();
-  const date = query.date || now.toISOString().slice(0, 10);
-  const start = new Date(`${date}T${query.timeFrom || '00:00'}:00.000Z`);
-  const end = new Date(`${date}T${query.timeTo || '23:59'}:59.999Z`);
+  const indiaDateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const indiaDate = `${indiaDateParts.find((part) => part.type === 'year').value}-${indiaDateParts.find((part) => part.type === 'month').value}-${indiaDateParts.find((part) => part.type === 'day').value}`;
+  const date = query.date || indiaDate;
+  const start = new Date(`${date}T${query.timeFrom || '00:00'}:00.000+05:30`);
+  const end = new Date(`${date}T${query.timeTo || '23:59'}:59.999+05:30`);
   return { start, end };
 }
 

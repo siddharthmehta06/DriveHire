@@ -184,6 +184,13 @@ async function main() {
     });
   }
 
+  // Seed pricing config singleton
+  await prisma.pricingConfig.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1, commissionRatePct: 10 },
+  });
+
   console.log(`Sample vehicle owner ID: ${owner.id}`);
 }
 

@@ -131,5 +131,14 @@
 **Related errors:** none
 **Next:** Ready for final commit and feature gate validation.
 
+## IMP-016 | Project audit | Baseline | 2026-10-14
+**Summary:** Added a prioritized project gap report covering missing account onboarding, payments, rentals, earnings, navigation, location input, and optional Uber-style extensions. Hardened vehicle photo uploads with server-side file-signature checks and corrected ride-search date boundaries to use Asia/Kolkata local time.
+**Files added/changed:** Docs/PROJECT_GAPS.md, server/src/middleware/upload.js, server/src/modules/rides/service.js, logs/ERROR_LOG.md, logs/IMPLEMENTATION_LOG.md
+**Decisions:** Kept registration documented but unimplemented because Docs/AGENTS.md explicitly marks authentication and registration out of scope while assuming they exist separately; documented the repository mismatch for rubric confirmation. Used MIME-derived extensions and signature checks without adding dependencies. Interpreted date/time filters in Asia/Kolkata and convert the resulting instants for PostgreSQL comparison.
+**Tests:** Not run; user requested implementation and documentation, and this session's execution constraints prohibit running tests unless explicitly requested. `git diff --check` reported a pre-existing trailing blank line in the already modified Docs/RUNNING.md; no issue was reported for the implementation files.
+**Review:** Confirmed both vehicle upload routes use the hardened wrapper and all new code paths preserve existing route limits and response errors. Registration, payment, rental, and earnings APIs remain open product gaps. No migration required.
+**Related errors:** E-022, E-023
+**Next:** Confirm assignment scope for registration and the optional F06–F08 features; run focused API tests when verification is requested.
+
 
 

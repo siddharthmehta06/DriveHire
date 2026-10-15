@@ -189,4 +189,22 @@
 **Prevention:** Run frontend tests (`npm run test:client`) before committing UI changes.
 **Resolved in:** baseline-fix
 
+## E-022 | F01 | Baseline review | Status: RESOLVED
+**Detected by:** review
+**Symptom:** Vehicle image uploads accepted files based on the multipart MIME claim and retained the original file extension, then served them from a public upload path.
+**Root cause:** Upload validation did not inspect file contents and filenames were not assigned a server-controlled extension.
+**Fix:** Require JPEG, PNG, or WebP file signatures and derive stored extensions from the supported MIME type; remove all files from a rejected multi-file upload.
+**Files:** server/src/middleware/upload.js
+**Prevention:** Validate uploaded content signatures as well as the client MIME claim; use server-generated names and extensions.
+**Resolved in:** IMP-016
+
+## E-023 | F04 | Baseline review | Status: RESOLVED
+**Detected by:** review
+**Symptom:** Ride date and time filters constructed UTC boundaries from values entered as India-local dates and times.
+**Root cause:** Search boundary parsing appended a `Z` UTC marker and the default date came from the host UTC date.
+**Fix:** Construct boundaries with the Asia/Kolkata UTC offset and derive the default date in Asia/Kolkata.
+**Files:** server/src/modules/rides/service.js
+**Prevention:** Treat user-entered calendar dates and times in the product timezone before converting them to UTC for storage queries.
+**Resolved in:** IMP-016
+
 
