@@ -117,6 +117,7 @@ model User {
   phone        String?
   passwordHash String
   role         String   @default("USER")
+  emailVerified Boolean  @default(false) @map("email_verified")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   vehicles     Vehicle[]
@@ -125,19 +126,31 @@ model User {
   driverProfile DriverProfile?
   rides         CarpoolRide[]
   bookings      Booking[]
-<<<<<<< HEAD
-  payerPayments   Payment[]        @relation("PayerPayments")
-  payeePayments   Payment[]        @relation("PayeePayments")
-  earningEntries  EarningEntry[]   @relation("EarnerEntries")
-=======
   payerPayments Payment[]       @relation("PayerPayments")
   payeePayments Payment[]       @relation("PayeePayments")
   pricingConfigsUpdated PricingConfig[]
   earningEntries EarningEntry[]
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   earningsAccount EarningsAccount?
+  reviewsGiven DriverReview[] @relation("ReviewAuthor")
+  reviewsReceived DriverReview[] @relation("ReviewSubject")
 
   @@map("users")
+}
+
+model RegistrationOtp {
+  email             String   @id
+  name              String
+  phone             String?
+  passwordHash      String   @map("password_hash")
+  role              String
+  codeHash          String   @map("code_hash")
+  attempts          Int      @default(0)
+  expiresAt         DateTime @map("expires_at")
+  resendAvailableAt DateTime @map("resend_available_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("registration_otps")
 }
 
 model DriverProfile {
@@ -254,11 +267,29 @@ model CarpoolRide {
   updatedAt      DateTime   @updatedAt
   bookings       RideBooking[]
   location       RideLocation?
+  reviews        DriverReview[]
 
   @@index([status, departureTime])
   @@index([driverId])
   @@index([vehicleId, status, departureTime])
   @@map("carpool_rides")
+}
+
+model DriverReview {
+  id         String      @id @default(uuid())
+  rideId     String      @map("ride_id")
+  ride       CarpoolRide @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  reviewerId String      @map("reviewer_id")
+  reviewer   User        @relation("ReviewAuthor", fields: [reviewerId], references: [id], onDelete: Cascade)
+  driverId   String      @map("driver_id")
+  driver     User        @relation("ReviewSubject", fields: [driverId], references: [id], onDelete: Cascade)
+  rating     Int
+  comment    String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@unique([rideId, reviewerId])
+  @@index([driverId, createdAt])
+  @@map("driver_reviews")
 }
 
 model Booking {
@@ -302,54 +333,6 @@ model RideLocation {
   @@map("ride_locations")
 }
 
-<<<<<<< HEAD
-enum PaymentMethod {
-  ONLINE
-  CASH
-}
-
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  SUCCEEDED
-  FAILED
-  CANCELLED
-}
-
-enum DiscountType {
-  PERCENT
-  FLAT
-}
-
-model Payment {
-  id                String        @id @default(uuid())
-  bookingId         String        @unique
-  booking           Booking       @relation(fields: [bookingId], references: [id])
-  payerId           String
-  payer             User          @relation("PayerPayments", fields: [payerId], references: [id])
-  payeeId           String
-  payee             User          @relation("PayeePayments", fields: [payeeId], references: [id])
-  baseAmount        Decimal       @db.Decimal(10, 2)
-  discountAmount    Decimal       @db.Decimal(10, 2) @default(0)
-  amount            Decimal       @db.Decimal(10, 2)
-  commissionRatePct Decimal       @db.Decimal(5, 2)
-  commissionAmount  Decimal       @db.Decimal(10, 2)
-  payeeAmount       Decimal       @db.Decimal(10, 2)
-  promoCodeId       String?
-  method            PaymentMethod?
-  status            PaymentStatus @default(PENDING)
-  gatewayProvider   String?
-  gatewayOrderId    String?       @unique
-  gatewayPaymentId  String?
-  failureReason     String?
-  receiptNumber     String?       @unique
-  paidAt            DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-
-  @@index([payerId])
-  @@index([payeeId])
-=======
 model Payment {
   id                String         @id @default(uuid())
   bookingId         String         @unique
@@ -379,24 +362,10 @@ model Payment {
   promoCode         PromoCode?     @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
   earningEntry      EarningEntry?
 
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   @@map("payments")
 }
 
 model PromoCode {
-<<<<<<< HEAD
-  id           String       @id @default(uuid())
-  code         String       @unique
-  discountType DiscountType
-  value        Decimal      @db.Decimal(10, 2)
-  maxDiscount  Decimal?     @db.Decimal(10, 2)
-  minAmount    Decimal?     @db.Decimal(10, 2)
-  usageLimit   Int?
-  usedCount    Int          @default(0)
-  validFrom    DateTime
-  validUntil   DateTime
-  active       Boolean      @default(true)
-=======
   id          String       @id @default(uuid())
   code        String       @unique
   discountType DiscountType
@@ -409,21 +378,15 @@ model PromoCode {
   validUntil  DateTime
   active      Boolean      @default(true)
   payments    Payment[]
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
 
   @@map("promo_codes")
 }
 
 model PricingConfig {
   id                Int      @id @default(1)
-<<<<<<< HEAD
-  commissionRatePct Decimal  @db.Decimal(5, 2) @default(10)
-  updatedById       String?
-=======
   commissionRatePct Decimal  @default(10) @db.Decimal(5, 2)
   updatedById       String?
   updatedBy         User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   updatedAt         DateTime @updatedAt
 
   @@map("pricing_config")
@@ -432,14 +395,9 @@ model PricingConfig {
 model EarningEntry {
   id               String      @id @default(uuid())
   earnerId         String
-<<<<<<< HEAD
-  earner           User        @relation("EarnerEntries", fields: [earnerId], references: [id])
-  paymentId        String      @unique
-=======
   earner           User        @relation(fields: [earnerId], references: [id], onDelete: Cascade)
   paymentId        String      @unique
   payment          Payment     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   bookingType      BookingType
   grossAmount      Decimal     @db.Decimal(10, 2)
   commissionAmount Decimal     @db.Decimal(10, 2)
@@ -453,15 +411,9 @@ model EarningEntry {
 
 model EarningsAccount {
   userId              String   @id
-<<<<<<< HEAD
-  user                User     @relation(fields: [userId], references: [id])
-  withdrawableBalance Decimal  @db.Decimal(12, 2) @default(0)
-  totalEarned         Decimal  @db.Decimal(12, 2) @default(0)
-=======
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   withdrawableBalance Decimal  @default(0) @db.Decimal(12, 2)
   totalEarned         Decimal  @default(0) @db.Decimal(12, 2)
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   updatedAt           DateTime @updatedAt
 
   @@map("earnings_accounts")

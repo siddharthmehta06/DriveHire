@@ -1,6 +1,6 @@
-const { parseBody } = require('../../lib/validate');
-const { successResponse } = require('../../lib/response');
-const service = require('./service');
+const { parseBody } = require("../../lib/validate");
+const { successResponse } = require("../../lib/response");
+const service = require("./service");
 const {
   vehicleIdSchema,
   vehicleReviewIdSchema,
@@ -9,7 +9,8 @@ const {
   rejectSchema,
   driverListSchema,
   queueSchema,
-} = require('./schema');
+  adminDashboardSchema,
+} = require("./schema");
 
 async function submitVehicle(req, res, next) {
   try {
@@ -25,7 +26,13 @@ async function listQueue(req, res, next) {
   try {
     const query = parseBody(queueSchema, req.query);
     const result = await service.listQueue(query.page, query.limit);
-    return res.json(successResponse(result.items, { page: query.page, limit: query.limit, total: result.total }));
+    return res.json(
+      successResponse(result.items, {
+        page: query.page,
+        limit: query.limit,
+        total: result.total,
+      }),
+    );
   } catch (error) {
     return next(error);
   }
@@ -44,7 +51,7 @@ async function getVehicleReview(req, res, next) {
 async function approveDocument(req, res, next) {
   try {
     const { id } = parseBody(documentIdSchema, req.params);
-    const document = await service.decideDocument(req.user.id, id, 'APPROVED');
+    const document = await service.decideDocument(req.user.id, id, "APPROVED");
     return res.json(successResponse(document));
   } catch (error) {
     return next(error);
@@ -55,7 +62,12 @@ async function rejectDocument(req, res, next) {
   try {
     const { id } = parseBody(documentIdSchema, req.params);
     const { reason } = parseBody(rejectSchema, req.body);
-    const document = await service.decideDocument(req.user.id, id, 'REJECTED', reason);
+    const document = await service.decideDocument(
+      req.user.id,
+      id,
+      "REJECTED",
+      reason,
+    );
     return res.json(successResponse(document));
   } catch (error) {
     return next(error);
@@ -66,7 +78,29 @@ async function listDrivers(req, res, next) {
   try {
     const query = parseBody(driverListSchema, req.query);
     const result = await service.listDrivers(query);
-    return res.json(successResponse(result.items, { page: query.page, limit: query.limit, total: result.total }));
+    return res.json(
+      successResponse(result.items, {
+        page: query.page,
+        limit: query.limit,
+        total: result.total,
+      }),
+    );
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getAdminDashboard(req, res, next) {
+  try {
+    const query = parseBody(adminDashboardSchema, req.query);
+    const result = await service.getAdminDashboard(query);
+    return res.json(
+      successResponse(result, {
+        page: query.page,
+        limit: query.limit,
+        total: result.total,
+      }),
+    );
   } catch (error) {
     return next(error);
   }
@@ -75,7 +109,7 @@ async function listDrivers(req, res, next) {
 async function approveDriver(req, res, next) {
   try {
     const { userId } = parseBody(driverIdSchema, req.params);
-    const profile = await service.decideDriver(req.user.id, userId, 'APPROVED');
+    const profile = await service.decideDriver(req.user.id, userId, "APPROVED");
     return res.json(successResponse(profile));
   } catch (error) {
     return next(error);
@@ -86,7 +120,12 @@ async function rejectDriver(req, res, next) {
   try {
     const { userId } = parseBody(driverIdSchema, req.params);
     const { reason } = parseBody(rejectSchema, req.body);
-    const profile = await service.decideDriver(req.user.id, userId, 'REJECTED', reason);
+    const profile = await service.decideDriver(
+      req.user.id,
+      userId,
+      "REJECTED",
+      reason,
+    );
     return res.json(successResponse(profile));
   } catch (error) {
     return next(error);
@@ -100,6 +139,7 @@ module.exports = {
   approveDocument,
   rejectDocument,
   listDrivers,
+  getAdminDashboard,
   approveDriver,
   rejectDriver,
 };

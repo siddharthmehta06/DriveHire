@@ -32,6 +32,17 @@ registerAmountStrategy('RIDE', (booking) => {
   return seats.times(cost);
 });
 
+// RENTAL strategy: totalCost from rental booking
+registerAmountStrategy('RENTAL', (booking) => {
+  const totalCost = booking.rentalBooking?.totalCost;
+
+  if (totalCost == null) {
+    throw new AppError('UNPROCESSABLE', 'Booking is missing rental price information.', 422);
+  }
+
+  return new Prisma.Decimal(totalCost);
+});
+
 module.exports = {
   registerAmountStrategy,
   getAmountStrategy,

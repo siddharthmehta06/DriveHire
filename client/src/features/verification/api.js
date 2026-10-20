@@ -31,3 +31,14 @@ export async function rejectDriver(token, id, reason) {
 export async function downloadReviewDocument(token, id) {
   return apiRequestBlob(`/documents/${encodeURIComponent(id)}/file`, { token });
 }
+
+export async function getAdminDashboard(token, params = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.section) searchParams.set('section', params.section);
+  if (params.page) searchParams.set('page', String(params.page));
+  if (params.limit) searchParams.set('limit', String(params.limit));
+  if (params.q) searchParams.set('q', params.q);
+  if (params.status) searchParams.set('status', params.status);
+  const query = searchParams.toString();
+  return apiRequest(`/admin/dashboard${query ? `?${query}` : ''}`, { token });
+}

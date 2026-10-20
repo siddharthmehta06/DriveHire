@@ -1,103 +1,5 @@
 const { parseBody } = require('../../lib/validate');
 const { successResponse } = require('../../lib/response');
-<<<<<<< HEAD
-const service = require('./service');
-const {
-  paymentByBookingSchema,
-  paymentIdSchema,
-  payMethodSchema,
-  confirmCashSchema,
-  applyPromoSchema,
-  adminCommissionSchema,
-  adminPromoCreateSchema,
-  adminPromoUpdateSchema,
-} = require('./schema');
-
-async function getPaymentByBooking(req, res, next) {
-  try {
-    const { bookingId } = parseBody(paymentByBookingSchema.params, req.params);
-    const payment = await service.getPaymentByBooking(req.user.id, bookingId);
-    return res.json(successResponse(payment));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function payOnline(req, res, next) {
-  try {
-    const { id } = parseBody(payMethodSchema.params, req.params);
-    const result = await service.payOnline(req.user.id, id);
-    return res.json(successResponse(result));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function mockComplete(req, res, next) {
-  try {
-    const { id } = parseBody(paymentIdSchema.params, req.params);
-    const payment = await service.mockComplete(req.user.id, id);
-    return res.json(successResponse(payment));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function payCash(req, res, next) {
-  try {
-    const { id } = parseBody(payMethodSchema.params, req.params);
-    const payment = await service.payCash(req.user.id, id);
-    return res.json(successResponse(payment));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function confirmCash(req, res, next) {
-  try {
-    const { id } = parseBody(confirmCashSchema.params, req.params);
-    const payment = await service.confirmCash(req.user.id, id);
-    return res.json(successResponse(payment));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function applyPromo(req, res, next) {
-  try {
-    const { id } = parseBody(applyPromoSchema.params, req.params);
-    const body = parseBody(applyPromoSchema.body, req.body);
-    const payment = await service.applyPromo(req.user.id, id, body.code);
-    return res.json(successResponse(payment));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function removePromo(req, res, next) {
-  try {
-    const { id } = parseBody(paymentIdSchema.params, req.params);
-    const payment = await service.removePromo(req.user.id, id);
-    return res.json(successResponse(payment));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function getReceipt(req, res, next) {
-  try {
-    const { id } = parseBody(paymentIdSchema.params, req.params);
-    const receipt = await service.getReceipt(req.user.id, id);
-    return res.json(successResponse(receipt));
-  } catch (error) {
-    return next(error);
-  }
-}
-
-async function getCommission(req, res, next) {
-  try {
-    const config = await service.getCommission();
-=======
 const { AppError } = require('../../lib/errors');
 const service = require('./service');
 const {
@@ -116,7 +18,6 @@ const {
 async function getCommission(req, res, next) {
   try {
     const config = await service.getCommissionConfig();
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
     return res.json(successResponse(config));
   } catch (error) {
     return next(error);
@@ -125,28 +26,17 @@ async function getCommission(req, res, next) {
 
 async function updateCommission(req, res, next) {
   try {
-<<<<<<< HEAD
-    const body = parseBody(adminCommissionSchema, req.body);
-    const config = await service.updateCommission(req.user.id, body.commissionRatePct);
-=======
     const data = parseBody(updateCommissionSchema, req.body);
     const config = await service.updateCommissionConfig({
       commissionRatePct: data.commissionRatePct,
       adminId: req.user.id,
     });
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
     return res.json(successResponse(config));
   } catch (error) {
     return next(error);
   }
 }
 
-<<<<<<< HEAD
-async function listPromoCodes(req, res, next) {
-  try {
-    const promos = await service.listPromoCodes();
-    return res.json(successResponse(promos));
-=======
 async function getPaymentByBookingId(req, res, next) {
   try {
     const { bookingId } = parseBody(bookingIdSchema, req.params);
@@ -240,7 +130,6 @@ async function listPromoCodes(req, res, next) {
     const query = parseBody(promoListQuerySchema, req.query);
     const result = await service.listPromoCodes(query);
     return res.json(successResponse(result.items, { page: query.page, limit: query.limit, total: result.total }));
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   } catch (error) {
     return next(error);
   }
@@ -248,13 +137,8 @@ async function listPromoCodes(req, res, next) {
 
 async function createPromoCode(req, res, next) {
   try {
-<<<<<<< HEAD
-    const body = parseBody(adminPromoCreateSchema, req.body);
-    const promo = await service.createPromoCode(body);
-=======
     const data = parseBody(createPromoCodeSchema, req.body);
     const promo = await service.createPromoCode(data);
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
     return res.status(201).json(successResponse(promo));
   } catch (error) {
     return next(error);
@@ -263,33 +147,15 @@ async function createPromoCode(req, res, next) {
 
 async function updatePromoCode(req, res, next) {
   try {
-<<<<<<< HEAD
-    const { id } = parseBody(paymentIdSchema.params, req.params);
-    const body = parseBody(adminPromoUpdateSchema, req.body);
-    const promo = await service.updatePromoCode(id, body);
-=======
     const { id } = parseBody(promoIdSchema, req.params);
     const data = parseBody(updatePromoCodeSchema, req.body);
     const promo = await service.updatePromoCode(id, data);
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
     return res.json(successResponse(promo));
   } catch (error) {
     return next(error);
   }
 }
 
-<<<<<<< HEAD
-async function listPayments(req, res, next) {
-  try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-    const result = await service.listPayments({ page, limit });
-    return res.json(successResponse(result.items, {
-      page: result.page,
-      limit: result.limit,
-      total: result.total,
-    }));
-=======
 async function applyPromo(req, res, next) {
   try {
     const { id } = parseBody(paymentIdSchema, req.params);
@@ -330,29 +196,12 @@ async function getReceiptPdf(req, res, next) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     return res.send(pdfBuffer);
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
   } catch (error) {
     return next(error);
   }
 }
 
 module.exports = {
-<<<<<<< HEAD
-  getPaymentByBooking,
-  payOnline,
-  mockComplete,
-  payCash,
-  confirmCash,
-  applyPromo,
-  removePromo,
-  getReceipt,
-  getCommission,
-  updateCommission,
-  listPromoCodes,
-  createPromoCode,
-  updatePromoCode,
-  listPayments,
-=======
   getCommission,
   updateCommission,
   getPaymentByBookingId,
@@ -370,5 +219,4 @@ module.exports = {
   removePromo,
   getReceipt,
   getReceiptPdf,
->>>>>>> b53e39ea1187268ad051517ac54a471ad4dc041d
 };

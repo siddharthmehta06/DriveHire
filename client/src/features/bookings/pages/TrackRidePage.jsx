@@ -29,6 +29,7 @@ export function TrackRidePage() {
   const rideId = window.location.pathname.split('/')[2]; // /rides/:id/track
   const [ride, setRide] = useState(null);
   const [liveLocation, setLiveLocation] = useState(null);
+  const [pathHistory, setPathHistory] = useState([]);
   const [socketConnected, setSocketConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,7 +57,15 @@ export function TrackRidePage() {
     if (!rideId || !token) return;
     fetchRideLocation(token, rideId)
       .then((res) => {
-        if (res.data) setLiveLocation(res.data);
+        if (res.data) {
+          const pt = {
+            lat: Number(res.data.lat),
+            lng: Number(res.data.lng),
+            updatedAt: res.data.updatedAt,
+          };
+          setLiveLocation(pt);
+          setPathHistory((prev) => (prev.length === 0 ? [pt] : prev));
+        }
       })
       .catch(() => {
         // Location might not be posted yet
@@ -88,10 +97,22 @@ export function TrackRidePage() {
 
     socket.on('ride:location', (data) => {
       if (data && data.rideId === rideId) {
-        setLiveLocation({
+        const nextPoint = {
           lat: Number(data.lat),
           lng: Number(data.lng),
           updatedAt: data.updatedAt,
+        };
+        setLiveLocation(nextPoint);
+        setPathHistory((prev) => {
+          const last = prev[prev.length - 1];
+          if (
+            last &&
+            Math.abs(last.lat - nextPoint.lat) < 0.00001 &&
+            Math.abs(last.lng - nextPoint.lng) < 0.00001
+          ) {
+            return prev;
+          }
+          return [...prev, nextPoint];
         });
       }
     });
@@ -101,6 +122,37 @@ export function TrackRidePage() {
       socket.disconnect();
     };
   }, [rideId, token]);
+
+  // 4. Polling fallback when socket is disconnected
+  useEffect(() => {
+    if (!rideId || !token || socketConnected) return undefined;
+    const interval = setInterval(() => {
+      fetchRideLocation(token, rideId)
+        .then((res) => {
+          if (res.data) {
+            const nextPoint = {
+              lat: Number(res.data.lat),
+              lng: Number(res.data.lng),
+              updatedAt: res.data.updatedAt,
+            };
+            setLiveLocation(nextPoint);
+            setPathHistory((prev) => {
+              const last = prev[prev.length - 1];
+              if (
+                last &&
+                Math.abs(last.lat - nextPoint.lat) < 0.00001 &&
+                Math.abs(last.lng - nextPoint.lng) < 0.00001
+              ) {
+                return prev;
+              }
+              return [...prev, nextPoint];
+            });
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [rideId, socketConnected, token]);
 
   const origin = ride && {
     text: ride.originText,
@@ -206,6 +258,14 @@ export function TrackRidePage() {
                       [Number(destination.lat), Number(destination.lng)],
                     ]}
                     pathOptions={{ color: '#244b43', dashArray: '6 8', weight: 3, opacity: 0.6 }}
+                  />
+                )}
+
+                {/* Travelled Path History */}
+                {pathHistory.length > 1 && (
+                  <Polyline
+                    positions={pathHistory.map((pt) => [Number(pt.lat), Number(pt.lng)])}
+                    pathOptions={{ color: '#1b5e20', weight: 4, opacity: 0.85 }}
                   />
                 )}
 

@@ -13,7 +13,6 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY server ./server
-COPY Docs ./Docs
 COPY client ./client
 RUN cd client && npm ci
 

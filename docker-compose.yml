@@ -24,6 +24,8 @@ services:
       PORT: 4000
       NODE_ENV: development
       JWT_SECRET: local-development-only
+      OTP_DEV_MODE: "true"
+      ADMIN_REGISTRATION_CODE: ${ADMIN_REGISTRATION_CODE:-}
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       SMTP_SECURE: "false"
@@ -79,7 +81,8 @@ services:
       DATABASE_URL: postgresql://drivehire:drivehire@postgres-test:5432/drivehire_test?schema=public
       NODE_ENV: test
       JWT_SECRET: test-only
-    command: ["npm", "test"]
+    command:
+      ["sh", "-c", "npm run test:server:migrations && npm run test:client"]
     depends_on:
       postgres-test:
         condition: service_healthy
