@@ -7,6 +7,74 @@ import { RouteMap } from '../components/RouteMap';
 import { searchRides } from '../api';
 import { useRideSocket } from '../useRideSocket';
 
+export const INDIAN_CITIES = [
+  "Agra",
+  "Ahmedabad",
+  "Ajmer",
+  "Aligarh",
+  "Amritsar",
+  "Aurangabad",
+  "Bareilly",
+  "Bengaluru",
+  "Bhopal",
+  "Bhubaneswar",
+  "Chandigarh",
+  "Chennai",
+  "Coimbatore",
+  "Dehradun",
+  "Delhi",
+  "Dhanbad",
+  "Faridabad",
+  "Ghaziabad",
+  "Goa",
+  "Gurgaon",
+  "Guwahati",
+  "Gwalior",
+  "Howrah",
+  "Hubballi",
+  "Hyderabad",
+  "Indore",
+  "Jabalpur",
+  "Jaipur",
+  "Jalandhar",
+  "Jodhpur",
+  "Kanpur",
+  "Kochi",
+  "Kolkata",
+  "Kota",
+  "Lucknow",
+  "Ludhiana",
+  "Madurai",
+  "Mangalore",
+  "Meerut",
+  "Mumbai",
+  "Mysuru",
+  "Nagpur",
+  "Nashik",
+  "Navi Mumbai",
+  "Noida",
+  "Patna",
+  "Prayagraj",
+  "Pune",
+  "Raipur",
+  "Rajkot",
+  "Ranchi",
+  "Salem",
+  "Shimla",
+  "Solapur",
+  "Srinagar",
+  "Surat",
+  "Thane",
+  "Thiruvananthapuram",
+  "Tiruchirappalli",
+  "Udaipur",
+  "Vadodara",
+  "Varanasi",
+  "Vijayawada",
+  "Visakhapatnam",
+  "Warangal",
+];
+
 const DEFAULT_FILTERS = {
   origin: '',
   destination: '',
@@ -88,8 +156,42 @@ export function SearchRidesPage() {
       </div>
       {error && <div className="inline-alert" role="alert">{error}</div>}
       <form className="ride-search-form" onSubmit={submit}>
-        <label className="form-field"><span>From</span><input maxLength="160" onChange={(event) => change('origin', event.target.value)} placeholder="City or pickup area" value={filters.origin} /></label>
-        <label className="form-field"><span>To</span><input maxLength="160" onChange={(event) => change('destination', event.target.value)} placeholder="Destination city" value={filters.destination} /></label>
+        <label className="form-field">
+          <span>From</span>
+          <select
+            aria-label="From"
+            onChange={(event) => change('origin', event.target.value)}
+            value={filters.origin}
+          >
+            <option value="">All origin cities / Any pickup</option>
+            {filters.origin && !INDIAN_CITIES.includes(filters.origin) && (
+              <option value={filters.origin}>{filters.origin}</option>
+            )}
+            {INDIAN_CITIES.map((city) => (
+              <option key={`origin-${city}`} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="form-field">
+          <span>To</span>
+          <select
+            aria-label="To"
+            onChange={(event) => change('destination', event.target.value)}
+            value={filters.destination}
+          >
+            <option value="">All destination cities / Any drop-off</option>
+            {filters.destination && !INDIAN_CITIES.includes(filters.destination) && (
+              <option value={filters.destination}>{filters.destination}</option>
+            )}
+            {INDIAN_CITIES.map((city) => (
+              <option key={`dest-${city}`} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="form-field"><span>Date</span><input onChange={(event) => change('date', event.target.value)} type="date" value={filters.date} /></label>
         <label className="form-field"><span>Depart after</span><input onChange={(event) => change('timeFrom', event.target.value)} type="time" value={filters.timeFrom} /></label>
         <label className="form-field"><span>Depart before</span><input onChange={(event) => change('timeTo', event.target.value)} type="time" value={filters.timeTo} /></label>

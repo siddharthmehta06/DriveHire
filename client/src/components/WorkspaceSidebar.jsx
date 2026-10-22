@@ -32,6 +32,7 @@ const ROLE_LABELS = { USER: "User", DRIVER: "Driver", ADMIN: "Administrator" };
 
 function isCurrentRoute(pathname, href) {
   if (pathname === href) return true;
+  if (href === "/admin") return false;
   if (href === "/rides/search" && /^\/rides\/[^/]+(?:\/track)?$/.test(pathname))
     return true;
   if (

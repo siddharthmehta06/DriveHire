@@ -130,8 +130,9 @@ function VehicleReview({ token, vehicle, onDecide, onDownload }) {
   );
 }
 
-function DriverReview({ driver, onDownload, onDecide, onLicenseDecide }) {
-  const license = driver.user.vehicleDocuments[0];
+function DriverReview({ driver, onDownload, onDecide, onLicenseDecide, saving }) {
+  const license = driver.user?.vehicleDocuments?.[0];
+  const pending = driver.backgroundCheckStatus === "PENDING";
   const approvedLicense =
     license?.status === "APPROVED" && new Date(license.expiryDate) > new Date();
   return (
@@ -147,7 +148,7 @@ function DriverReview({ driver, onDownload, onDecide, onLicenseDecide }) {
         {driver.licenseNumber || license?.documentNumber || "Not supplied"}
       </p>
       {license ? (
-        <article className="verification-document">
+        <article className="verification-document verification-document--driver">
           <div>
             <strong>{DOCUMENT_NAMES.LICENSE}</strong>
             <span>{license.documentNumber}</span>
@@ -158,7 +159,8 @@ function DriverReview({ driver, onDownload, onDecide, onLicenseDecide }) {
           </div>
           <div className="verification-actions">
             <button
-              className="text-button"
+              className="button button--secondary"
+              disabled={saving}
               onClick={() => onDownload(license)}
               type="button"
             >
@@ -167,14 +169,16 @@ function DriverReview({ driver, onDownload, onDecide, onLicenseDecide }) {
             {license.status === "PENDING" && (
               <>
                 <button
-                  className="text-button"
+                  className="button button--primary"
+                  disabled={!pending || saving}
                   onClick={() => onLicenseDecide(license, "APPROVED")}
                   type="button"
                 >
                   Approve licence
                 </button>
                 <button
-                  className="text-button document-delete-action"
+                  className="button button--danger-quiet"
+                  disabled={!pending || saving}
                   onClick={() => onLicenseDecide(license, "REJECTED")}
                   type="button"
                 >
@@ -183,15 +187,16 @@ function DriverReview({ driver, onDownload, onDecide, onLicenseDecide }) {
               </>
             )}
             <button
-              className="text-button"
-              disabled={!approvedLicense}
+              className="button button--primary"
+              disabled={!approvedLicense || !pending || saving}
               onClick={() => onDecide("APPROVED")}
               type="button"
             >
               Approve driver
             </button>
             <button
-              className="text-button document-delete-action"
+              className="button button--danger"
+              disabled={!pending || saving}
               onClick={() => onDecide("REJECTED")}
               type="button"
             >
@@ -200,9 +205,21 @@ function DriverReview({ driver, onDownload, onDecide, onLicenseDecide }) {
           </div>
         </article>
       ) : (
-        <p className="inline-alert" role="status">
-          An uploaded driver licence is required before approval.
-        </p>
+        <div style={{ marginTop: "1rem" }}>
+          <p className="inline-alert" role="status">
+            An uploaded driver licence is required before approval.
+          </p>
+          <div className="verification-actions" style={{ marginTop: "0.75rem" }}>
+            <button
+              className="button button--danger"
+              disabled={!pending || saving}
+              onClick={() => onDecide("REJECTED")}
+              type="button"
+            >
+              Reject driver
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -426,6 +443,7 @@ export function AdminVerificationPage({ view = "vehicles" }) {
                 onLicenseDecide={(document, action) =>
                   decide({ kind: "license", document }, action)
                 }
+                saving={saving}
               />
             ) : (
               <VehicleReview

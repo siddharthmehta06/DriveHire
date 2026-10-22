@@ -2820,6 +2820,40 @@ select:focus {
   margin-top: 24px;
 }
 
+.verification-document--driver {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-subtle);
+}
+
+.verification-document--driver .verification-actions {
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-light);
+}
+
+.verification-actions .button {
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.verification-actions .button:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+@media (max-width: 560px) {
+  .verification-actions .button {
+    flex: 1 1 100%;
+  }
+}
+
 .verification-audit-list {
   margin: 16px 0 0;
   padding: 0;

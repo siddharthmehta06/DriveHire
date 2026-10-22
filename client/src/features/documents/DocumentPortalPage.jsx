@@ -97,16 +97,14 @@ export function DocumentPortalPage() {
   }, [refreshDocuments]);
 
   useEffect(() => {
-    if (!isAdmin) {
-      listVehicles(token)
-        .then((result) => setVehicles(result.data))
-        .catch((requestError) => setError(requestError.message));
-    }
-  }, [isAdmin, token]);
+    listVehicles(token)
+      .then((result) => setVehicles(result.data))
+      .catch((requestError) => setError(requestError.message));
+  }, [token]);
 
   const eligibleVehicles = vehicles.filter((vehicle) => !vehicle.deletedAt);
   const visibleTypes = DOCUMENT_TYPES.filter(
-    (item) => item.scope === "vehicle" || user.role === "DRIVER",
+    (item) => item.scope === "vehicle" || user.role === "DRIVER" || isAdmin,
   );
 
   function changeField(event) {
@@ -514,3 +512,4 @@ export function DocumentPortalPage() {
     </div>
   );
 }
+

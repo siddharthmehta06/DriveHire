@@ -247,17 +247,17 @@ export function DriverRideManagePage() {
                 <p className="eyebrow">RIDE LIFECYCLE</p>
                 <h2>Controls & Status</h2>
               </div>
-              <span className={`status-badge status-badge--${ride.status.toLowerCase()}`}>
-                {ride.status}
+              <span className={`status-badge status-badge--${(ride.status || "OPEN").toLowerCase()}`}>
+                {ride.status || "OPEN"}
               </span>
             </div>
 
             <div style={{ margin: '1.25rem 0' }}>
               <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-muted, #666)' }}>
                 <strong>Departure:</strong>{' '}
-                {new Intl.DateTimeFormat('en-IN', { dateStyle: 'full', timeStyle: 'short' }).format(
-                  new Date(ride.departureTime)
-                )}
+                {ride.departureTime && !isNaN(new Date(ride.departureTime).getTime())
+                  ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(ride.departureTime))
+                  : '-'}
               </p>
               <p style={{ margin: '0 0 0.5rem 0', color: 'var(--color-muted, #666)' }}>
                 <strong>Seats Occupancy:</strong> {ride.totalSeats - ride.availableSeats} of {ride.totalSeats} seats booked ({ride.availableSeats} available)

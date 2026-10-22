@@ -55,6 +55,66 @@ describe("AdminDashboardPage", () => {
         });
       }
 
+      if (section === "VEHICLES") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              stats: mockStats,
+              section: "VEHICLES",
+              items: [
+                {
+                  id: "veh-1",
+                  make: "Toyota",
+                  model: "Innova Crysta",
+                  year: 2022,
+                  registrationNumber: "MH02CB1234",
+                  verificationStatus: "VERIFIED",
+                  isAvailable: true,
+                  owner: { name: "Rajesh Kumar", email: "rajesh@example.com" },
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+              total: 1,
+              page: 1,
+              limit: 15,
+            },
+            meta: { total: 1, page: 1, limit: 15 },
+          }),
+        });
+      }
+
+      if (section === "DOCUMENTS") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            data: {
+              stats: mockStats,
+              section: "DOCUMENTS",
+              items: [
+                {
+                  id: "doc-1",
+                  type: "RC",
+                  documentNumber: "RC-998877",
+                  status: "APPROVED",
+                  expiryDate: new Date(Date.now() + 864000000).toISOString(),
+                  vehicle: { make: "Toyota", model: "Innova", registrationNumber: "MH02CB1234" },
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+              total: 1,
+              page: 1,
+              limit: 15,
+            },
+            meta: { total: 1, page: 1, limit: 15 },
+          }),
+        });
+      }
+
       if (section === "REVIEWS") {
         return Promise.resolve({
           ok: true,
@@ -123,6 +183,21 @@ describe("AdminDashboardPage", () => {
     expect(screen.getByText("DRIVERS APPROVED")).toBeInTheDocument();
     expect(screen.getByText("VERIFIED VEHICLES")).toBeInTheDocument();
     expect(screen.getByText("Priya Sharma")).toBeInTheDocument();
+
+    // Switch section to Vehicles directly from Users
+    fireEvent.click(screen.getByRole("button", { name: "Vehicles" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Toyota Innova Crysta")).toBeInTheDocument();
+      expect(screen.getByText("MH02CB1234")).toBeInTheDocument();
+    });
+
+    // Switch section to Documents directly from Vehicles
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("RC-998877")).toBeInTheDocument();
+    });
 
     // Switch section to Reviews
     fireEvent.click(screen.getByRole("button", { name: "Reviews" }));

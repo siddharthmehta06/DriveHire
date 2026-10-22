@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "../../api/http";
 import { WorkspaceSidebar } from "../../components/WorkspaceSidebar";
 import { useAuth } from "../../context/AuthContext";
@@ -60,26 +60,32 @@ const SECTION_STATUS_OPTIONS = {
 
 function formatDate(value) {
   if (!value) return "-";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function formatDateTime(value) {
   if (!value) return "-";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 export function AdminDashboardPage() {
   const { user, token, signOut } = useAuth();
   const [section, setSection] = useState("USERS");
+  const [loadedSection, setLoadedSection] = useState("USERS");
+  const currentSectionRef = useRef("USERS");
   const [stats, setStats] = useState(null);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -91,7 +97,7 @@ export function AdminDashboardPage() {
   const [error, setError] = useState("");
 
   const refresh = useCallback(
-    async (targetSection = section, targetPage = page, targetQ = query, targetStatus = statusFilter) => {
+    async (targetSection, targetPage, targetQ, targetStatus) => {
       setLoading(true);
       setError("");
       try {
@@ -99,23 +105,28 @@ export function AdminDashboardPage() {
           section: targetSection,
           page: targetPage,
           limit,
-          q: targetQ.trim() || undefined,
+          q: targetQ?.trim() || undefined,
           status: targetStatus || undefined,
         });
-        setStats(result.data.stats);
-        setItems(result.data.items);
-        setTotal(result.data.total);
+        if (currentSectionRef.current === targetSection) {
+          setStats(result.data.stats);
+          setItems(result.data.items);
+          setTotal(result.data.total);
+          setLoadedSection(targetSection);
+        }
       } catch (requestError) {
         if (requestError instanceof ApiError && requestError.status === 401) {
           signOut();
-        } else {
+        } else if (currentSectionRef.current === targetSection) {
           setError(requestError.message);
         }
       } finally {
-        setLoading(false);
+        if (currentSectionRef.current === targetSection) {
+          setLoading(false);
+        }
       }
     },
-    [limit, page, query, section, signOut, statusFilter, token],
+    [limit, signOut, token],
   );
 
   useEffect(() => {
@@ -123,7 +134,13 @@ export function AdminDashboardPage() {
   }, [page, refresh, section, statusFilter]);
 
   function handleSectionChange(newSection) {
+    if (newSection === section) return;
+    currentSectionRef.current = newSection;
     setSection(newSection);
+    setLoadedSection("");
+    setItems([]);
+    setTotal(0);
+    setLoading(true);
     setPage(1);
     setStatusFilter("");
     setQuery("");
@@ -135,6 +152,7 @@ export function AdminDashboardPage() {
     refresh(section, 1, query, statusFilter);
   }
 
+  const isTableLoading = loading || loadedSection !== section;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
@@ -289,7 +307,7 @@ export function AdminDashboardPage() {
                     <span role="columnheader">EMAIL STATUS</span>
                     <span role="columnheader">JOINED</span>
                   </div>
-                  {loading ? (
+                  {isTableLoading ? (
                     <div className="table-loading">
                       <div className="skeleton-line skeleton-line--wide" />
                       <div className="skeleton-line" />
@@ -302,10 +320,10 @@ export function AdminDashboardPage() {
                   ) : (
                     items.map((u) => (
                       <div className="vehicle-table__row" key={u.id} role="row">
-                        <span role="cell"><strong>{u.name}</strong></span>
-                        <span role="cell">{u.email}</span>
+                        <span role="cell"><strong>{u.name || "-"}</strong></span>
+                        <span role="cell">{u.email || "-"}</span>
                         <span role="cell">{u.phone || "-"}</span>
-                        <span role="cell"><span className="status-pill status-pill--unverified">{u.role}</span></span>
+                        <span role="cell"><span className="status-pill status-pill--unverified">{u.role || "USER"}</span></span>
                         <span role="cell">
                           <span className={`status-pill status-pill--${u.emailVerified ? "verified" : "rejected"}`}>
                             {u.emailVerified ? "Verified" : "Unverified"}
@@ -327,7 +345,7 @@ export function AdminDashboardPage() {
                     <span role="columnheader">LAST UPDATED</span>
                     <span role="columnheader">ACTIONS</span>
                   </div>
-                  {loading ? (
+                  {isTableLoading ? (
                     <div className="table-loading">
                       <div className="skeleton-line skeleton-line--wide" />
                       <div className="skeleton-line" />
@@ -339,18 +357,18 @@ export function AdminDashboardPage() {
                     </div>
                   ) : (
                     items.map((d) => (
-                      <div className="vehicle-table__row" key={d.userId} role="row">
+                      <div className="vehicle-table__row" key={d.userId || d.id} role="row">
                         <span role="cell"><strong>{d.user?.name || "Driver"}</strong></span>
                         <span role="cell">
-                          {d.user?.email}
+                          {d.user?.email || "-"}
                           {d.user?.phone && <small> · {d.user.phone}</small>}
                         </span>
                         <span role="cell">
                           <span className={`status-pill status-pill--${d.backgroundCheckStatus === "APPROVED" ? "verified" : d.backgroundCheckStatus === "REJECTED" ? "rejected" : "under-review"}`}>
-                            {d.backgroundCheckStatus}
+                            {d.backgroundCheckStatus || "PENDING"}
                           </span>
                         </span>
-                        <span className="date-cell" role="cell">{formatDate(d.updatedAt)}</span>
+                        <span className="date-cell" role="cell">{formatDate(d.updatedAt || d.createdAt)}</span>
                         <div className="row-actions" role="cell">
                           <a className="row-action" href="/admin/drivers">
                             Review
@@ -372,7 +390,7 @@ export function AdminDashboardPage() {
                     <span role="columnheader">AVAILABILITY</span>
                     <span role="columnheader">ACTIONS</span>
                   </div>
-                  {loading ? (
+                  {isTableLoading ? (
                     <div className="table-loading">
                       <div className="skeleton-line skeleton-line--wide" />
                       <div className="skeleton-line" />
@@ -383,33 +401,39 @@ export function AdminDashboardPage() {
                       <p>Adjust your search query or status filter.</p>
                     </div>
                   ) : (
-                    items.map((v) => (
-                      <div className="vehicle-table__row" key={v.id} role="row">
-                        <span role="cell">
-                          <strong>{v.make} {v.model}</strong>
-                          <small> · {v.year}</small>
-                        </span>
-                        <span className="admin-owner-cell" role="cell">
-                          {v.owner?.name || "-"}
-                          <small>{v.owner?.email || ""}</small>
-                        </span>
-                        <span className="registration-number" role="cell">{v.registrationNumber}</span>
-                        <span role="cell">
-                          <span className={`status-pill status-pill--${v.verificationStatus.toLowerCase().replace("_", "-")}`}>
-                            {v.verificationStatus.replace("_", " ")}
+                    items.map((v) => {
+                      const vStatus = v.verificationStatus || "UNVERIFIED";
+                      return (
+                        <div className="vehicle-table__row" key={v.id} role="row">
+                          <span role="cell">
+                            <strong>{v.make || "-"} {v.model || ""}</strong>
+                            {v.year && <small> · {v.year}</small>}
                           </span>
-                        </span>
-                        <span className="availability-cell" role="cell">
-                          <span className={`availability-dot${v.isAvailable ? " is-available" : ""}`} />
-                          {v.isAvailable ? "Available" : "Unavailable"}
-                        </span>
-                        <div className="row-actions" role="cell">
-                          <a className="row-action" href="/admin/verifications">
-                            Review
-                          </a>
+                          <span className="admin-owner-cell" role="cell">
+                            {v.owner?.name || "-"}
+                            <small>{v.owner?.email || ""}</small>
+                          </span>
+                          <span className="registration-number" role="cell">{v.registrationNumber || "-"}</span>
+                          <span role="cell">
+                            <span className={`status-pill status-pill--${vStatus.toLowerCase().replaceAll("_", "-")}`}>
+                              {vStatus.replace("_", " ")}
+                            </span>
+                          </span>
+                          <span className="availability-cell" role="cell">
+                            <span className={`availability-dot${v.isAvailable ? " is-available" : ""}`} />
+                            {v.isAvailable ? "Available" : "Unavailable"}
+                          </span>
+                          <div className="row-actions" role="cell">
+                            <a
+                              className="row-action"
+                              href={vStatus === "UNDER_REVIEW" ? "/admin/verifications" : "/vehicles"}
+                            >
+                              {vStatus === "UNDER_REVIEW" ? "Review" : "View fleet"}
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </>
               )}
@@ -424,7 +448,7 @@ export function AdminDashboardPage() {
                     <span role="columnheader">EXPIRY</span>
                     <span role="columnheader">ACTIONS</span>
                   </div>
-                  {loading ? (
+                  {isTableLoading ? (
                     <div className="table-loading">
                       <div className="skeleton-line skeleton-line--wide" />
                       <div className="skeleton-line" />
@@ -435,33 +459,36 @@ export function AdminDashboardPage() {
                       <p>Adjust your search query or status filter.</p>
                     </div>
                   ) : (
-                    items.map((doc) => (
-                      <div className="vehicle-table__row" key={doc.id} role="row">
-                        <span role="cell">
-                          <strong>{doc.type}</strong>
-                          {doc.insuranceType && <small> ({doc.insuranceType})</small>}
-                        </span>
-                        <span className="registration-number" role="cell">{doc.documentNumber}</span>
-                        <span role="cell">
-                          {doc.vehicle ? (
-                            <span>{doc.vehicle.make} {doc.vehicle.model} ({doc.vehicle.registrationNumber})</span>
-                          ) : (
-                            <span>{doc.owner?.name || "Driver document"}</span>
-                          )}
-                        </span>
-                        <span role="cell">
-                          <span className={`status-pill status-pill--${doc.status.toLowerCase()}`}>
-                            {doc.status}
+                    items.map((doc) => {
+                      const docStatus = doc.status || "PENDING";
+                      return (
+                        <div className="vehicle-table__row" key={doc.id} role="row">
+                          <span role="cell">
+                            <strong>{doc.type || "-"}</strong>
+                            {doc.insuranceType && <small> ({doc.insuranceType})</small>}
                           </span>
-                        </span>
-                        <span className="date-cell" role="cell">{formatDate(doc.expiryDate)}</span>
-                        <div className="row-actions" role="cell">
-                          <a className="row-action" href="/documents">
-                            View register
-                          </a>
+                          <span className="registration-number" role="cell">{doc.documentNumber || "-"}</span>
+                          <span role="cell">
+                            {doc.vehicle ? (
+                              <span>{doc.vehicle.make} {doc.vehicle.model} ({doc.vehicle.registrationNumber})</span>
+                            ) : (
+                              <span>{doc.owner?.name || "Driver document"}</span>
+                            )}
+                          </span>
+                          <span role="cell">
+                            <span className={`status-pill status-pill--${docStatus.toLowerCase().replaceAll("_", "-")}`}>
+                              {docStatus}
+                            </span>
+                          </span>
+                          <span className="date-cell" role="cell">{formatDate(doc.expiryDate)}</span>
+                          <div className="row-actions" role="cell">
+                            <a className="row-action" href="/documents">
+                              View register
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </>
               )}
@@ -476,7 +503,7 @@ export function AdminDashboardPage() {
                     <span role="columnheader">SEATS</span>
                     <span role="columnheader">STATUS</span>
                   </div>
-                  {loading ? (
+                  {isTableLoading ? (
                     <div className="table-loading">
                       <div className="skeleton-line skeleton-line--wide" />
                       <div className="skeleton-line" />
@@ -490,7 +517,7 @@ export function AdminDashboardPage() {
                     items.map((r) => (
                       <div className="vehicle-table__row" key={r.id} role="row">
                         <span role="cell">
-                          <strong>{r.originText} → {r.destText}</strong>
+                          <strong>{r.originText || "-"} → {r.destText || "-"}</strong>
                           <small> · ₹{Number(r.costPerSeat || 0).toFixed(0)}/seat</small>
                         </span>
                         <span role="cell">{r.driver?.name || "-"}</span>
@@ -498,10 +525,10 @@ export function AdminDashboardPage() {
                           {r.vehicle ? `${r.vehicle.make} ${r.vehicle.model}` : "-"}
                         </span>
                         <span className="date-cell" role="cell">{formatDateTime(r.departureTime)}</span>
-                        <span role="cell">{r.availableSeats} / {r.totalSeats}</span>
+                        <span role="cell">{r.availableSeats ?? "-"} / {r.totalSeats ?? "-"}</span>
                         <span role="cell">
                           <span className={`status-pill status-pill--${r.status === "COMPLETED" ? "verified" : r.status === "CANCELLED" ? "rejected" : "under-review"}`}>
-                            {r.status}
+                            {r.status || "OPEN"}
                           </span>
                         </span>
                       </div>
@@ -519,7 +546,7 @@ export function AdminDashboardPage() {
                     <span role="columnheader">COMMENT</span>
                     <span role="columnheader">DATE</span>
                   </div>
-                  {loading ? (
+                  {isTableLoading ? (
                     <div className="table-loading">
                       <div className="skeleton-line skeleton-line--wide" />
                       <div className="skeleton-line" />
@@ -530,20 +557,25 @@ export function AdminDashboardPage() {
                       <p>Completed rides with passenger feedback will appear here.</p>
                     </div>
                   ) : (
-                    items.map((rev) => (
-                      <div className="vehicle-table__row" key={rev.id} role="row">
-                        <span role="cell"><strong>{rev.driver?.name || "-"}</strong></span>
-                        <span role="cell">{rev.reviewer?.name || "-"}</span>
-                        <span role="cell">
-                          <span style={{ color: "var(--ochre)", fontWeight: "600" }}>
-                            {"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)}
+                    items.map((rev) => {
+                      const rating = typeof rev.rating === "number" && !isNaN(rev.rating)
+                        ? Math.max(0, Math.min(5, Math.floor(rev.rating)))
+                        : 0;
+                      return (
+                        <div className="vehicle-table__row" key={rev.id} role="row">
+                          <span role="cell"><strong>{rev.driver?.name || "-"}</strong></span>
+                          <span role="cell">{rev.reviewer?.name || "-"}</span>
+                          <span role="cell">
+                            <span style={{ color: "var(--ochre)", fontWeight: "600" }}>
+                              {"★".repeat(rating)}{"☆".repeat(5 - rating)}
+                            </span>
+                            <small> ({rating}/5)</small>
                           </span>
-                          <small> ({rev.rating}/5)</small>
-                        </span>
-                        <span role="cell">{rev.comment || <span style={{ color: "var(--ink-soft)" }}>No comment</span>}</span>
-                        <span className="date-cell" role="cell">{formatDate(rev.createdAt)}</span>
-                      </div>
-                    ))
+                          <span role="cell">{rev.comment || <span style={{ color: "var(--ink-soft)" }}>No comment</span>}</span>
+                          <span className="date-cell" role="cell">{formatDate(rev.createdAt)}</span>
+                        </div>
+                      );
+                    })
                   )}
                 </>
               )}

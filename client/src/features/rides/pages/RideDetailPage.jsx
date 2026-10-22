@@ -39,7 +39,10 @@ export function RideDetailPage() {
 
   const origin = ride && { text: ride.originText, lat: Number(ride.originLat), lng: Number(ride.originLng) };
   const destination = ride && { text: ride.destText, lat: Number(ride.destLat), lng: Number(ride.destLng) };
-  const departure = ride && new Intl.DateTimeFormat('en-IN', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(ride.departureTime));
+  const departureDate = ride?.departureTime ? new Date(ride.departureTime) : null;
+  const departure = departureDate && !isNaN(departureDate.getTime())
+    ? new Intl.DateTimeFormat("en-IN", { dateStyle: "full", timeStyle: "short" }).format(departureDate)
+    : "-";
 
   return (
     <RideShell signOut={signOut} user={user}>
@@ -56,8 +59,8 @@ export function RideDetailPage() {
             <p className="eyebrow">DEPARTURE</p>
             <h2>{departure}</h2>
             <dl className="detail-list ride-detail-list">
-              <div><dt>Driver</dt><dd>{ride.driver.firstName}</dd></div>
-              <div><dt>Vehicle</dt><dd>{ride.vehicle.make} {ride.vehicle.model} · {ride.vehicle.vehicleType}</dd></div>
+              <div><dt>Driver</dt><dd>{ride.driver?.name || ride.driver?.firstName || 'Driver'}</dd></div>
+              <div><dt>Vehicle</dt><dd>{ride.vehicle ? `${ride.vehicle.make} ${ride.vehicle.model}${ride.vehicle.vehicleType ? ` · ${ride.vehicle.vehicleType}` : ""}` : "-"}</dd></div>
               <div><dt>Seats available</dt><dd><SeatBadge availableSeats={ride.availableSeats} totalSeats={ride.totalSeats} /></dd></div>
               <div><dt>Price per seat</dt><dd>₹{Number(ride.costPerSeat).toLocaleString('en-IN')}</dd></div>
               {ride.distanceKm && <div><dt>Route distance</dt><dd>{ride.distanceKm} km</dd></div>}

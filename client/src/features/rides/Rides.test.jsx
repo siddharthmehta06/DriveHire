@@ -60,7 +60,7 @@ describe('carpool ride pages', () => {
     render(<AuthProvider><App /></AuthProvider>);
 
     expect(await screen.findByRole('heading', { name: 'Pune' })).toBeInTheDocument();
-    expect(screen.getByText('Mumbai')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mumbai' })).toBeInTheDocument();
     expect(screen.getByText((_, element) => element?.classList.contains('ride-card__price'))).toBeInTheDocument();
     expect(screen.getByLabelText('Route map preview')).toBeInTheDocument();
     expect(screen.getByText('Live seat updates connected')).toBeInTheDocument();
